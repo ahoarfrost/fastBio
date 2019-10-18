@@ -3,91 +3,23 @@
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from fastai import *
+from iterator import *
 
-def FastqIterator(handle, offset=0):
-    #this function is copied from FastqGeneralIterator, except added return of offset
-    #you only need to provide the 'offset' argument for the situation where you are using the built-in seek() function to skip to a particular line; if you are iterating through all lines this is unnecessary
-    
-    # We need to call handle.readline() at least four times per record,
-    # so we'll save a property look up each time:
-    handle_readline = handle.readline
-    offset = offset
-    next_offset = None
-    line = handle_readline()
-    if not line:
-        return  # Premature end of file, or just empty?
-    if isinstance(line[0], int):
-        raise ValueError("Is this handle in binary mode not text mode?")
-    #to_subtract = handle.tell()
-    while line:
-        if next_offset:
-            offset = next_offset
-        #offset = handle.tell()-to_subtract
-        if line[0] != "@":
-            raise ValueError("Records in Fastq files should start with '@' character")
-        title_line = line[1:].rstrip()
-        # Will now be at least one line of quality data - in most FASTQ files
-        # just one line! We therefore use string concatenation (if needed)
-        # rather using than the "".join(...) trick just in case it is multiline:
-        seq_string = handle_readline().rstrip()
-        # There may now be more sequence lines, or the "+" quality marker line:
-        while True:
-            line = handle_readline()
-            if not line:
-                raise ValueError("End of file without quality information.")
-            if line[0] == "+":
-                # The title here is optional, but if present must match!
-                second_title = line[1:].rstrip()
-                if second_title and second_title != title_line:
-                    raise ValueError("Sequence and quality captions differ.")
-                break
-            seq_string += line.rstrip()  # removes trailing newlines
-        # This is going to slow things down a little, but assuming
-        # this isn't allowed we should try and catch it here:
-        if " " in seq_string or "\t" in seq_string:
-            raise ValueError("Whitespace is not allowed in the sequence.")
-        seq_len = len(seq_string)
+supported_seqfiletypes = ['fastq']
 
-        # Will now be at least one line of quality data...
-        quality_string = handle_readline().rstrip()
-        # There may now be more quality data, or another sequence, or EOF
-        # If this is the end of the read sequence, should look at offset here; this is where the NEXT 
-        next_offset = handle.tell()
-        while True:
-            line = handle_readline()
-            if not line:
-                break  # end of file
-            if line[0] == "@":
-                # This COULD be the start of a new sequence. However, it MAY just
-                # be a line of quality data which starts with a "@" character.  We
-                # should be able to check this by looking at the sequence length
-                # and the amount of quality data found so far.
-                if len(quality_string) >= seq_len:
-                    # We expect it to be equal if this is the start of a new record.
-                    # If the quality data is longer, we'll raise an error below.
-                    break
-                # Continue - its just some (more) quality data.
-            quality_string += line.rstrip()
-            #if there's more quality data, take offset after that line until we break
-            next_offset = handle.tell()
+seqfiletype_to_iterator = {
+    'fastq': FastqIterator
+}
 
-        if seq_len != len(quality_string):
-            raise ValueError(
-                "Lengths of sequence and quality values differs for %s (%i and %i)."
-                % (title_line, seq_len, len(quality_string))
-            )
-
-        # Return the record and then continue...
-        yield (title_line, seq_string, quality_string, offset)
+def check_seqfiletype(seqfiletype):
+    assert seqfiletype in supported_seqfiletypes, "Input sequence file type %r is not supported." % seqfiletype
 
 def open_single_read(filename, offset, seqfiletype, tok, vocab):
+    check_seqfiletype(seqfiletype)
+    iterator = seqfiletype_to_iterator[seqfiletype]
     with open(filename,"r") as handle:
         handle.seek(offset)
-        if seqfiletype=='fastq':
-            title, seq, qual, off = next(FastqIterator(handle, offset)
-        else:
-            raise ValueError('input sequence filetype not supported. Must use fastq.')
-    handle.close()
+        title, seq, qual, off = next(iterator(handle, offset))
     #our seq is a string. tokenize our seq 
     tokens = tok.tokenizer(seq)
     ids = vocab.numericalize(tokens)
@@ -115,7 +47,7 @@ class SeqList(ItemList):
 
     def __init__(self, items:Iterator, vocab:BioVocab=None, tokenizer:BioTokenizer=None, pad_idx:int=0, sep=' ', seqfiletype='fastq', **kwargs):
         super().__init__(items, **kwargs)
-        self.vocab,self.pad_idx,self.sep, self.seqfiletype = vocab,pad_idx,sep,seqfiletype
+        self.vocab,self.tokenizer,self.pad_idx,self.sep, self.seqfiletype = vocab,tokenizer,pad_idx,sep,seqfiletype
         self.copy_new += ['vocab', 'tokenizer', 'pad_idx', 'sep', 'seqfiletype']
 
     def get(self, i):
@@ -138,13 +70,27 @@ class SeqList(ItemList):
         return Sequence(t[idx_min:idx_max+1], self.vocab.textify(t[idx_min:idx_max+1]))
 
     @classmethod
-    def from_seqfile
+    def from_seqfile(cls, path:PathOrStr='.', extensions:Collection[str]=seq_extensions, vocab:BioVocab=None,
+                    processor:PreProcessor=None, **kwargs)->'SeqList':
         "Creates a SeqList from a single sequence file (e.g. .fastq, .fasta, etc.)"
+        #get (filename, offset) tuple for each read and add to items
+        check_seqfiletype(self.seqfiletype)
+        iterator = seqfiletype_to_iterator[self.seqfiletype]
+        with open(filename, "r") as handle:
+            items = []
+            for title, seq, qual, offset in iterator(handle):
+                items.append((filename, offset))
+        
+        #processor = ifnone(processor, [OpenFileProcessor(), TokenizeProcessor(), NumericalizeProcessor(vocab=vocab)])
+        
+        return cls(items=items, path=path, processor=processor, **kwargs)
 
 
     @classmethod
-    def from_folder
-        "Creates a SeqList from all sequence files in a folder"
+    #def from_folder(cls, path:PathOrStr='.', extensions:Collection[str]):
+    #    "Creates a SeqList from all sequence files in a folder"
+        #get list of files in `path` with seqfile suffixes. `recurse` determines if we search subfolders.
+        #within each file, get (filename, offset) tuple for each read and add to items
 
     @classmethod #compare to TextList
     def from_folder(cls, path:PathOrStr='.', extensions:Collection[str]=text_extensions, vocab:Vocab=None,
