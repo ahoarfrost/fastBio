@@ -1,36 +1,53 @@
-#data loading and bunching
+#data loading and bunching; defines the dataloader and items
+#contains the basic item Sequence, the basic itemlist SeqList, 
 
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from fastai import *
-from iterator import *
+from fastai.basics import *
+from fastai.data_block import *
+from iterators import *
 
-supported_seqfiletypes = ['fastq']
+supported_seqfiletypes = ['.fastq']
 
 seqfiletype_to_iterator = {
-    'fastq': FastqIterator
+    '.fastq': FastqIterator
 }
 
-def check_seqfiletype(seqfiletype):
-    assert seqfiletype in supported_seqfiletypes, "Input sequence file type %r is not supported." % seqfiletype
+def check_seqfiletype(filename:PathOrStr, extensions:Collection[str]=supported_seqfiletypes):
+    if isinstance(filename, Path): 
+        seqfiletype = filename.suffix
+    else:
+        seqfiletype = '.'+filename.split('.')[-1]
+    assert seqfiletype in extensions, "Input sequence file type %r is not supported." % seqfiletype
+    return seqfiletype
 
-def open_single_read(filename, offset, seqfiletype, tok, vocab):
-    check_seqfiletype(seqfiletype)
+def open_single_read(filename, offset, tok, vocab, extensions:Collection[str]=supported_seqfiletypes):
+    seqfiletype = check_seqfiletype(filename, extensions)
     iterator = seqfiletype_to_iterator[seqfiletype]
     with open(filename,"r") as handle:
         handle.seek(offset)
         title, seq, qual, off = next(iterator(handle, offset))
-    #our seq is a string. tokenize our seq 
+    #our seq is a string. tokenize & numericalize our seq 
     tokens = tok.tokenizer(seq)
     ids = vocab.numericalize(tokens)
         
     #and return as Sequence
     return Sequence(ids, tokens)
 
+def get_items_from_seqfile(filename:PathOrStr, extensions:Collection[str]=supported_seqfiletypes):
+    seqfiletype = check_seqfiletype(filename, extensions)
+    iterator = seqfiletype_to_iterator[seqfiletype]
+    with open(filename, "r") as handle:
+        items = []
+        for title, seq, qual, offset in iterator(handle):
+            items.append((filename, offset))
+    return items
+
 
 class Sequence(ItemBase):
     "Basic item for biological sequence data."
-    #ids are the array of numericalized vocab IDs for that sequence; 
+    #ids are an array of numbers, of numericalized vocab IDs for that sequence; 
     # seq is the sequence of tokens for the sequence, separated by the 'sep' (default is a space) (output of BioVocab.textify)
     def __init__(self, ids, tokens): 
         self.data = np.array(ids, dtype=np.int64)
@@ -41,20 +58,20 @@ class Sequence(ItemBase):
 
 class SeqList(ItemList):
     "Basic `ItemList` for biological sequence data."
-    _bunch = BioClasDataBunch
-    _processor = [BioTokenizeProcessor, BioNumericalizeProcessor]
+    #_bunch = BioClasDataBunch
+    #_processor = [BioTokenizeProcessor, BioNumericalizeProcessor]
     _is_lm = False
 
-    def __init__(self, items:Iterator, vocab:BioVocab=None, tokenizer:BioTokenizer=None, pad_idx:int=0, sep=' ', seqfiletype='fastq', **kwargs):
+    def __init__(self, items:Iterator, vocab=None, tokenizer=None, pad_idx:int=0, sep=' ', extensions:Collection[str]=supported_seqfiletypes, **kwargs):
         super().__init__(items, **kwargs)
-        self.vocab,self.tokenizer,self.pad_idx,self.sep, self.seqfiletype = vocab,tokenizer,pad_idx,sep,seqfiletype
-        self.copy_new += ['vocab', 'tokenizer', 'pad_idx', 'sep', 'seqfiletype']
+        self.vocab,self.tokenizer,self.pad_idx,self.sep, self.extensions = vocab,tokenizer,pad_idx,sep,extensions
+        self.copy_new += ['vocab', 'tokenizer', 'pad_idx', 'sep', 'extensions']
 
     def get(self, i):
         #o is the ith index of self.items. This is a tuple of a filename and an offset value of the read's location in the file
         filename,offset = super().get(i)
         #use a FastqIterator to go to the file at the right line, get the record info, tokenize/numericalize as needed, and return a Sequence() object
-        one_sequence = open_single_read(filename, offset, self.seqfiletype, self.tokenizer, self.vocab)
+        one_sequence = open_single_read(filename=filename, offset=offset, tok=self.tokenizer, vocab=self.vocab, extensions=self.extensions)
  
         return one_sequence
 
@@ -70,35 +87,25 @@ class SeqList(ItemList):
         return Sequence(t[idx_min:idx_max+1], self.vocab.textify(t[idx_min:idx_max+1]))
 
     @classmethod
-    def from_seqfile(cls, path:PathOrStr='.', extensions:Collection[str]=seq_extensions, vocab:BioVocab=None,
-                    processor:PreProcessor=None, **kwargs)->'SeqList':
+    def from_seqfile(cls, filename:PathOrStr, path:PathOrStr='.', extensions:Collection[str]=supported_seqfiletypes, **kwargs)->'SeqList':
         "Creates a SeqList from a single sequence file (e.g. .fastq, .fasta, etc.)"
         #get (filename, offset) tuple for each read and add to items
-        check_seqfiletype(self.seqfiletype)
-        iterator = seqfiletype_to_iterator[self.seqfiletype]
-        with open(filename, "r") as handle:
-            items = []
-            for title, seq, qual, offset in iterator(handle):
-                items.append((filename, offset))
+        items = get_items_from_seqfile(filename=filename, extensions=extensions)
         
-        #processor = ifnone(processor, [OpenFileProcessor(), TokenizeProcessor(), NumericalizeProcessor(vocab=vocab)])
-        
-        return cls(items=items, path=path, processor=processor, **kwargs)
-
+        return cls(items=items, path=path, **kwargs)
 
     @classmethod
-    #def from_folder(cls, path:PathOrStr='.', extensions:Collection[str]):
-    #    "Creates a SeqList from all sequence files in a folder"
+    def from_folder(cls, path:PathOrStr='.', extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, **kwargs) -> 'SeqList':
+        "Creates a SeqList from all sequence files in a folder"
         #get list of files in `path` with seqfile suffixes. `recurse` determines if we search subfolders.
+        files = get_files(path=path, extensions=extensions, recurse=recurse, **kwargs)
         #within each file, get (filename, offset) tuple for each read and add to items
+        items = []
+        for filename in files:
+            items.extend(get_items_from_seqfile(filename=filename, extensions=extensions))
 
-    @classmethod #compare to TextList
-    def from_folder(cls, path:PathOrStr='.', extensions:Collection[str]=text_extensions, vocab:Vocab=None,
-                    processor:PreProcessor=None, **kwargs)->'TextList':
-        "Get the list of files in `path` that have a text suffix. `recurse` determines if we search subfolders."
-        processor = ifnone(processor, [OpenFileProcessor(), TokenizeProcessor(), NumericalizeProcessor(vocab=vocab)])
-        return super().from_folder(path=path, extensions=extensions, processor=processor, **kwargs)
-
+        print(items)
+        return cls(items=items, path=path, **kwargs)
 
 
     def show_xys(self, xs, ys, max_len:int=70)->None:
@@ -133,14 +140,29 @@ class LMLabelList(EmptyLabelList):
         super().__init__(items, **kwargs)
         self.loss_func = CrossEntropyFlat()
 
-class LMTextList(SeqList):
+class LMSeqList(SeqList):
     "Special `SeqList` for a language model."
-    _bunch = TextLMDataBunch
+    #_bunch = BioLMDataBunch
     _is_lm = True
 
+'''
 class BioDataBunch(DataBunch):
     "General class to get a `DataBunch` for bio sequences. Subclassed by `BioClasDataBunch` and `BioLMDataBunch`."
-    #todo: from_fastas (a folder with whole fasta files with multiple sequences e.g. genomes or metagenomes); from_csv (a file with file names and ); from_folder
+    #todo: from_folder, from_seqfile from_csv (a file with labels and filenames)
+    #creates seqlist, splits, labels, (optionally) add test, add transforms to be applied, and finally converts to databunch
+    
+    def create_from_ll(cls, lls:LabelLists, bs:int=64, val_bs:int=None, ds_tfms:Optional[TfmList]=None, 
+                num_workers:int=defaults.cpus, dl_tfms:Optional[Collection[Callable]]=None, device:torch.device=None,
+                test:Optional[PathOrStr]=None, collate_fn:Callable=data_collate, size:int=None, no_check:bool=False,
+                resize_method:ResizeMethod=None, mult:int=None, padding_mode:str='reflection',
+                mode:str='bilinear', tfm_y:bool=False)->'BioDataBunch':
+    )
+    #@classmethod
+    #def from_seqfile()
+
+    @classmethod
+    def from_folder ()
+    
     @classmethod
     def from_df(cls, path:PathOrStr, train_df:DataFrame, valid_df:DataFrame, test_df:Optional[DataFrame]=None,
                 tokenizer:Tokenizer=None, vocab:Vocab=None, classes:Collection[str]=None, text_cols:IntsOrStrs=1,
@@ -181,3 +203,4 @@ class BioDataBunch(DataBunch):
         dls = [DataLoader(d, b, shuffle=False) for d,b in zip(datasets, (bs,val_bs,val_bs,val_bs)) if d is not None]
         
         return cls(*dls, path=path, collate_fn=collate_fn, no_check=False)
+'''
