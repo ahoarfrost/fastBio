@@ -42,7 +42,7 @@ data = (SeqList.from_folder(path='example_data/metagenome_fastq') #this folder c
         .split_by_rand_pct(valid_pct=0.2, seed=1)   #can also use split_by_folder, splid_by_func, see data_block.py in fastai 
         .label_for_lm()                             #apply labeling, which labels each item in the itemlist and at this point converts the ItemList to a LabelList - which provides a bunch of useful functions and also inherits from a PyTorch Dataset; this particular labeling function is defined in SeqList, gives empty labels basically
         #.add_test_folder()                         #this is where you would add a test set from folder (or add_test to add itemlist); optional
-        .transform(tfms)                            #add the transforms you want to apply to each dataset when it's actually loaded
+        .transform(tfms)                            #add the transforms you want to apply to each dataset when it's actually loaded; define tfms above
         .databunch()                                #convert to databunch
 
 #now you can look at your databunch:
