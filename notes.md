@@ -21,9 +21,30 @@ You *could* use full genes or genomes, etc., in which case you may need to write
 
 ### Key functions 
 
-* FastqIterator 
+* FastqIterator
 
-    The function "FastqIterator" (in data.py) takes a file handle for a fastq file, and returns the header info, sequence, quality sequence, and file offset for that record. 
+    The function "FastqIterator" (in data.py) takes a file handle for a fastq file, and returns the header info, sequence, quality sequence, and file offset for that record.
     The file offset enables you to read that record directly from its location in the containing file on the fly (for model input)
     The header info is parsed downstream to create the SeqRecord with the info needed for reading the file (filename and offset)
-    The sequence info is used when reading in the actual data for the model batch; 
+    The sequence info is used when reading in the actual data for the model batch;
+
+## Example creating dataloader, model, and training
+
+The basic ItemList, 'SeqList', is defined in data.py. You can use the data_block api to create a dataloader a la:
+
+```python
+
+#define your tfms
+#for language models, you need a tokenizer and numericalizer (and a vocab to numericalize with)
+#tfms = 
+
+data = (SeqList.from_folder(path='example_data/metagenome_fastq') #this folder contains a few .fastq files with the first 100 sequences from the original file in the SRA
+        .split_by_rand_pct(valid_pct=0.2, seed=1)   #can also use split_by_folder, splid_by_func, see data_block.py in fastai 
+        .label_for_lm()                             #apply labeling, which labels each item in the itemlist and at this point converts the ItemList to a LabelList - which provides a bunch of useful functions and also inherits from a PyTorch Dataset; this particular labeling function is defined in SeqList, gives empty labels basically
+        #.add_test_folder()                         #this is where you would add a test set from folder (or add_test to add itemlist); optional
+        .transform(tfms)                            #add the transforms you want to apply to each dataset when it's actually loaded
+        .databunch()                                #convert to databunch
+
+#now you can look at your databunch:
+data.show_batch()
+```
