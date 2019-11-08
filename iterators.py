@@ -1,5 +1,5 @@
 def FastqIterator(handle, offset=0):
-    #this function is copied from FastqGeneralIterator, except added return of offset
+    #this function is copied from FastqGeneralIterator from the BioPython pkg, except added return of offset
     #you only need to provide the 'offset' argument for the situation where you are using the built-in seek() function to skip to a particular line; if you are iterating through all lines this is unnecessary
     
     # We need to call handle.readline() at least four times per record,
@@ -12,11 +12,9 @@ def FastqIterator(handle, offset=0):
         return  # Premature end of file, or just empty?
     if isinstance(line[0], int):
         raise ValueError("Is this handle in binary mode not text mode?")
-    #to_subtract = handle.tell()
     while line:
         if next_offset:
             offset = next_offset
-        #offset = handle.tell()-to_subtract
         if line[0] != "@":
             raise ValueError("Records in Fastq files should start with '@' character")
         title_line = line[1:].rstrip()
