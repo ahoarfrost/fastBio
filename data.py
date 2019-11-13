@@ -2,7 +2,6 @@
 #contains the basic item Sequence, the basic itemlist SeqList, 
 
 from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
 from fastai import *
 from fastai.basics import *
 from fastai.data_block import *
