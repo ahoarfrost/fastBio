@@ -6,6 +6,7 @@ from fastai import *
 from fastai.basics import *
 from fastai.data_block import *
 from iterators import *
+from transform import *
 
 supported_seqfiletypes = ['.fastq']
 
@@ -40,7 +41,7 @@ def get_items_from_seqfile(filename:PathOrStr, extensions:Collection[str]=suppor
     with open(filename, "r") as handle:
         items = []
         for title, seq, qual, offset in iterator(handle):
-            items.append((filename, offset))
+            items.append((Path(filename), offset))
     return items
 
 
@@ -61,7 +62,7 @@ class SeqList(ItemList):
     #_processor = [BioTokenizeProcessor, BioNumericalizeProcessor]
     _is_lm = False
 
-    def __init__(self, items:Iterator, vocab=None, tokenizer=None, pad_idx:int=0, sep=' ', extensions:Collection[str]=supported_seqfiletypes, **kwargs):
+    def __init__(self, items:Iterator, vocab=BioVocab.create(), tokenizer=BioTokenizer(), pad_idx:int=1, sep=' ', extensions:Collection[str]=supported_seqfiletypes, **kwargs):
         super().__init__(items, **kwargs)
         self.vocab,self.tokenizer,self.pad_idx,self.sep, self.extensions = vocab,tokenizer,pad_idx,sep,extensions
         self.copy_new += ['vocab', 'tokenizer', 'pad_idx', 'sep', 'extensions']
