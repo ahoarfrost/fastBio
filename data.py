@@ -23,6 +23,7 @@ def check_seqfiletype(filename:PathOrStr, extensions:Collection[str]=supported_s
     return seqfiletype
 
 def open_single_read(filename, offset, tok, vocab, extensions:Collection[str]=supported_seqfiletypes):
+    #opens a single sequence from a particular offset in a seqfile, tokenizes, numericalizes, and returns as Sequence object
     seqfiletype = check_seqfiletype(filename, extensions)
     iterator = seqfiletype_to_iterator[seqfiletype]
     with open(filename,"r") as handle:
@@ -62,7 +63,7 @@ class SeqList(ItemList):
     #_processor = [BioTokenizeProcessor, BioNumericalizeProcessor]
     _is_lm = False
 
-    def __init__(self, items:Iterator, vocab=BioVocab.create(), tokenizer=BioTokenizer(), pad_idx:int=1, sep=' ', extensions:Collection[str]=supported_seqfiletypes, **kwargs):
+    def __init__(self, items:Iterator, vocab:BioVocab=BioVocab.create_from_ksize(), tokenizer:BioTokenizer=BioTokenizer(), pad_idx:int=1, sep=' ', extensions:Collection[str]=supported_seqfiletypes, **kwargs):
         super().__init__(items, **kwargs)
         self.vocab,self.tokenizer,self.pad_idx,self.sep, self.extensions = vocab,tokenizer,pad_idx,sep,extensions
         self.copy_new += ['vocab', 'tokenizer', 'pad_idx', 'sep', 'extensions']
