@@ -4,9 +4,11 @@ from fastai.torch_core import *
 from fastai.data_block import *
 from fastai.text import Vocab
 from data import *
+import data
 import itertools
 
 supported_languages = {'dna':['A','C','G','T']}
+supported_seqfiletypes = ['.fastq']
 
 UNK, PAD = 'xxunk', 'xxpad'
 defaults.special_tokens = [UNK, PAD]
@@ -54,7 +56,7 @@ class BioTokenizer():
     def _process_all_1(self, seqs:Collection[str]) -> List[List[str]]:
         "Process a list of `seqs` in one process."
         if self.special_cases: self.add_special_cases(self.special_cases)
-        return [self.process_text(str(s)) for s in seqs]
+        return [self.process_one(str(s)) for s in seqs]
 
     def process_all(self, seqs:Collection[str]) -> List[List[str]]:
         "Process a list of `seqs` with multiprocessing."
@@ -91,8 +93,8 @@ class BioVocab(Vocab):
         itos = itos[:max_vocab]
         return cls(itos)
 
-    #TODO: write create_from_ksize to make a vocab with all possible permutations of a certain alphabet and kmer size
-    def create_from_ksize(ksize:int=1, alphabet:Collection[str]=supported_languages['dna'], special_tokens=defaults.special_tokens):
+    @classmethod
+    def create_from_ksize(cls, ksize:int=1, alphabet:Collection[str]=supported_languages['dna'], special_tokens=defaults.special_tokens):
         "Create a vocabulary of all possible permutations of kmers of a given kmer size. If no "
         itos = kmer_permutations(ksize=ksize, alphabet=alphabet)
         for o in reversed(defaults.special_tokens):
@@ -100,7 +102,21 @@ class BioVocab(Vocab):
             itos.insert(0, o)
         return cls(itos)
 
-#The following PreProcessors can be applied to preprocess items in your SeqList (which are pointers to sequences in files by default) into numericalized tokens before training. Note this will mean all your data needs to fit in memory
+#The following transforms are what you need to apply to items in each batch - open the sequence, tokenize, and numericalize
+def OpenSeq(item, tokenizer:BioTokenizer=BioTokenizer(), 
+                vocab:BioVocab=BioVocab.create_from_ksize(), 
+                sep:str=' ', 
+                extensions:Collection[str]=supported_seqfiletypes):
+
+    filename, offset = item
+    seq = open_single_read(filename, offset, tok=tokenizer, vocab=vocab, sep=sep, extensions=extensions)
+    return seq
+
+#def TokenizeSeq(item, )
+
+
+#The following PreProcessors can be applied to preprocess items in your SeqList (which are pointers to sequences in files by default) into numericalized tokens before training. 
+# These preprocessors will convert each pointer in the itemlist to a tokenized & numericalized text. Note this will mean all your items needs to fit in memory
 
 def _join_seqs(seqs:Collection[str]):
     #if your sequence is an array of multiple sequences, this will join them together separated by spaces to be tokenized as one
@@ -115,14 +131,15 @@ def _join_seqs(seqs:Collection[str]):
     return col.values
 
 class OpenSequenceProcessor(PreProcessor):
-    def __init__(self, ds:ItemList=None, tokenizer:BioTokenizer=BioTokenizer(), vocab:BioVocab=BioVocab.create_from_ksize(), extensions:Collection[str]=supported_seqfiletypes):
+    def __init__(self, ds:ItemList=None, tokenizer:BioTokenizer=BioTokenizer(), vocab:BioVocab=BioVocab.create_from_ksize(), sep:str=' ', extensions:Collection[str]=supported_seqfiletypes):
         self.tokenizer = tokenizer
         self.vocab = vocab
         self.extensions = extensions
+        self.sep = sep
 
     def process_one(self, item):
         filename, offset = item
-        seq = open_single_read(filename, offset, tok=self.tokenizer, vocab=self.vocab, extensions=self.extensions)
+        seq = open_single_read(filename, offset, tok=self.tokenizer, vocab=self.vocab, sep=self.sep, extensions=self.extensions)
         return seq
 
     def process(self, ds):
@@ -146,8 +163,10 @@ class BioTokenizeProcessor(PreProcessor):
             tokens += self.tokenizer.process_all(ds.items[i:i+self.chunksize])
         ds.items = tokens
 
+#class BioNumericalizeProcessor(PreProcessor)
+
 def get_lol_processor(tokenizer:BioTokenizer=BioTokenizer(), vocab:BioVocab=BioVocab.create_from_ksize(), 
-                        extensions:Collection[str]=supported_seqfiletypes, 
+                        extensions:Collection[str]=None, 
                         max_vocab:int=4**8, min_freq:int=1):
     #see Chor et al. 2009 (doi: 10.1186/gb-2009-10-10-r108) for kmer frequency distribs for diff k sizes that make sense
 
