@@ -3,8 +3,6 @@
 from fastai.torch_core import *
 from fastai.data_block import *
 from fastai.text import Vocab
-from data import *
-import data
 import itertools
 
 supported_languages = {'dna':['A','C','G','T']}

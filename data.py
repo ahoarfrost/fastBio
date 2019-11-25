@@ -44,9 +44,44 @@ def get_items_from_seqfile(filename:PathOrStr, extensions:Collection[str]=suppor
     with open(filename, "r") as handle:
         items = []
         for title, seq, qual, offset in iterator(handle):
-            items.append((Path(filename), offset))
+            #get (filename, offset, length of sequence) for each read and add to items
+            items.append((Path(filename), offset, len(seq)))
     handle.close()
     return items
+
+class StreamingLanguageModelPreLoader(LanguageModelPreloader):
+    "Performs the same function as LanguageModelPreloader, but uses the computed lengths of sequences from the pointer items rather than needing all the texts in memory in the ItemList."
+
+    def __init__(self, tok, vocab, sep, extensions:Collection[str]=supported_seqfiletypes):
+
+
+    def __len__(self):
+        if self.ite_len is None:
+            if self.lengths is None: self.lengths = np.array([length for filename,offset,length in self.dataset.x.items])
+            self.totalToks = self.lengths.sum()
+            self.ite_len   = self.bs*int( math.ceil( self.totalToks/(self.bptt*self.bs) )) if self.item is None else 1
+        return self.ite_len
+
+    def fill_row(self, forward, items, idx, row, ro, ri, overlap,lengths):
+        "Fill the row with tokens from the ragged array. --OBS-- overlap != 1 has not been implemented"
+        ibuf = n = 0
+        ro  -= 1
+        while ibuf < row.size:
+            ro   += 1
+            ix    = idx[ro]
+            filename, offset, length = items[ix]
+            seq = open_single_read(filename, offset, tok, vocab, sep, extensions)
+            rag   = items[ix] #need to read in the sequence here (different from LanguageModelPreloader)
+            if forward:
+                ri = 0 if ibuf else ri
+                n  = min(lengths[ix] - ri, row.size - ibuf)
+                row[ibuf:ibuf+n] = rag[ri:ri+n]
+            else:
+                ri = lengths[ix] if ibuf else ri
+                n  = min(ri, row.size - ibuf)
+                row[ibuf:ibuf+n] = rag[ri-n:ri][::-1]
+            ibuf += n
+        return ro, ri + ((n-overlap) if forward else -(n-overlap))
 
 
 class BioDataBunch(DataBunch):
@@ -97,7 +132,7 @@ class BioLMDataBunch(BioDataBunch):
         "Create a `BioDataBunch` in `path` from the `datasets` for language modelling. Passes `**dl_kwargs` on to `DataLoader()`"
         datasets = cls._init_ds(train_ds, valid_ds, test_ds)
         val_bs = ifnone(val_bs, bs)
-        datasets = [LanguageModelPreLoader(ds, shuffle=(i==0), bs=(bs if i==0 else val_bs), bptt=bptt, backwards=backwards)
+        datasets = [StreamingLanguageModelPreLoader(ds, shuffle=(i==0), bs=(bs if i==0 else val_bs), bptt=bptt, backwards=backwards)
                     for i,ds in enumerate(datasets)]
         val_bs = bs
         dls = [DataLoader(d, b, shuffle=False, **dl_kwargs) for d,b in zip(datasets, (bs,val_bs,val_bs,val_bs)) if d is not None]
@@ -128,7 +163,7 @@ class SeqList(ItemList):
 
     def get(self, i):
         #o is the ith index of self.items. This is a tuple of a filename and an offset value of the read's location in the file
-        filename,offset = super().get(i)
+        filename,offset,length = super().get(i)
         #use an iterator to go to the file at the right line, get the record info, tokenize/numericalize as needed, and return a Sequence() object
         one_sequence = open_single_read(filename=filename, offset=offset, tok=self.tokenizer, vocab=self.vocab, sep=self.sep, extensions=self.extensions)
  
@@ -158,7 +193,7 @@ class SeqList(ItemList):
         "Creates a SeqList from all sequence files in a folder"
         #get list of files in `path` with seqfile suffixes. `recurse` determines if we search subfolders.
         files = get_files(path=path, extensions=extensions, recurse=recurse)
-        #within each file, get (filename, offset) tuple for each read and add to items
+        #within each file, get (filename, offset, length of sequence) for each read and add to items
         items = []
         for filename in files:
             items.extend(get_items_from_seqfile(filename=filename, extensions=extensions))
