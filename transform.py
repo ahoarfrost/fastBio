@@ -16,11 +16,13 @@ class BioTokenizer():
     Note in fastai.text there is a separate BaseTokenizer class to contain the tokenizer function and that is passed to the 'Tokenizer' class. Here, we put this in one class to make this less confusing.
     """
 
-    def __init__(self, ksize:int=1, stride:int=1, special_cases:Collection[str]=None, n_cpus:int=None):
+    def __init__(self, ksize:int=1, stride:int=1, special_cases:Collection[str]=None, n_cpus:int=None, 
+                 include_bos:bool=True, include_eos:bool=False):
         self.ksize = ksize #the kmer size (or 'ngram') of each token (default character level k=1)
         self.stride = stride #length of stride to take between each kmer
         self.special_cases = special_cases if special_cases is not None else defaults.special_tokens
         self.n_cpus = ifnone(n_cpus, defaults.cpus)
+        self.include_bos, self.include_eos = include_bos, include_eos
 
     def __repr__(self) -> str:
         res = f'BioTokenizer with the following special tokens:\n'
@@ -28,7 +30,10 @@ class BioTokenizer():
             res += f' - {case}\n'
         return res
 
-    def tokenizer(self, t:str) -> List[str]:
+    def tokenizer(self, t:str, include_bos:bool=None, include_eos:bool=None) -> List[str]:
+        include_bos = ifnone(include_bos, self.include_bos)
+        include_eos = ifnone(include_eos, self.include_eos)
+
         t = t.upper()
         if self.ksize == 1:
             toks = list(t)
@@ -36,6 +41,11 @@ class BioTokenizer():
             toks = [t[i:i+self.ksize] for i in range(0, len(t), self.stride) if len(t[i:i+self.ksize]) == self.ksize]
         if len(toks[-1]) < self.ksize: 
             toks = toks[:-1]
+
+        if include_bos:
+            toks = [f'{BOS}'] + toks
+        if include_eos:
+            toks = toks + [f'{EOS}']
 
         return toks
 
@@ -107,7 +117,7 @@ class BioVocab(Vocab):
 #The following PreProcessors can be applied to preprocess items in your TextList into numericalized tokens before training. 
 # These preprocessors will convert each sequence (in Text form) in the itemlist to a tokenized & numericalized text. Note this will mean all your items need to fit in memory
 
-def _join_seqs(seqs:Collection[str], include_bos:bool=True, include_eos:bool=False):
+def _join_seqs(seqs:Collection[str]):
     '''
     if your sequence is an array of multiple sequences, this will join them together separated by spaces to be tokenized as one
     (this may be useful if for example you want to represent a genome from its genes in syntenic order perhaps with a special token to mark where genes begin and end)
@@ -116,31 +126,33 @@ def _join_seqs(seqs:Collection[str], include_bos:bool=True, include_eos:bool=Fal
     
     if not isinstance(seqs, np.ndarray): seqs = np.array(seqs)
     if is1d(seqs): seqs = seqs[:,None]
-    bos_tok = f'{BOS} ' if include_bos else ''
 
     df = pd.DataFrame({i:seqs[:,i] for i in range(seqs.shape[1])})
-    col = f'{bos_tok}' + df[0].astype(str)
+    col = df[0].astype(str)
     for i in range(1,len(df.columns)):
         col += ' ' + df[i].astype(str)   
     
-    if include_eos: col = col + f' {EOS}'
-
     return col.values
 
 class BioTokenizeProcessor(PreProcessor):
     "`PreProcessor` that tokenizes the seqs in `ds`. If no tokenizer given, defaults to character LM."
     def __init__(self, ds:ItemList=None, tokenizer:BioTokenizer=BioTokenizer(), 
-                 chunksize:int=10000, include_bos:bool=True, include_eos:bool=False):
+                 chunksize:int=10000, include_bos:bool=None, include_eos:bool=None):
         self.tokenizer = tokenizer
         self.chunksize = chunksize
         self.include_bos = include_bos
         self.include_eos = include_eos
 
+        if self.include_bos is not None:
+            self.tokenizer.include_bos = self.include_bos 
+        if self.include_eos is not None:
+            self.tokenizer.include_eos = self.include_eos
+
     def process_one(self, item):
-        return self.tokenizer._process_all_1(_join_seqs([item], self.include_bos, self.include_eos))[0]
+        return self.tokenizer._process_all_1(_join_seqs([item]))[0]
 
     def process(self, ds):
-        ds.items = _join_seqs(ds.items, self.include_bos, self.include_eos)
+        ds.items = _join_seqs(ds.items)
         tokens = []
         for i in progress_bar(range(0,len(ds),self.chunksize), leave=False):
             tokens += self.tokenizer.process_all(ds.items[i:i+self.chunksize])
@@ -163,7 +175,7 @@ class BioNumericalizeProcessor(PreProcessor):
 
 def get_lol_processor(tokenizer:BioTokenizer=None, vocab:BioVocab=None, 
                         chunksize:int=10000, max_vocab:int=4**8, min_freq:int=2,
-                        include_bos:bool=True, include_eos:bool=False):
+                        include_bos:bool=None, include_eos:bool=None):
 
     return [BioTokenizeProcessor(tokenizer=tokenizer, chunksize=chunksize, include_bos=include_bos, include_eos=include_eos), 
             BioNumericalizeProcessor(vocab=vocab, max_vocab=max_vocab, min_freq=min_freq)]
