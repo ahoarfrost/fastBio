@@ -13,6 +13,34 @@ seqfiletype_to_iterator = {
     '.fastq.abundtrim': FastqIterator
 }
 
+def _get_bio_files(parent, p, f, extensions):
+    p = Path(p)#.relative_to(parent)
+    if isinstance(extensions,str): extensions = [extensions]
+    low_extensions = [e.lower() for e in extensions] if extensions is not None else None
+    res = [p/o for o in f if not o.startswith('.')
+           and (extensions is None or f'.{".".join(o.split(".")[1:])}' in low_extensions)]
+    return res
+
+def get_bio_files(path:PathOrStr, extensions:Collection[str]=None, recurse:bool=True, exclude:Optional[Collection[str]]=None,
+              include:Optional[Collection[str]]=None, presort:bool=False, followlinks:bool=False)->FilePathList:
+    "Return list of files in `path` that have a suffix in `extensions`; optionally `recurse`."
+    low_extensions = [e.lower() for e in extensions] if extensions is not None else None
+    if recurse:
+        res = []
+        for i,(p,d,f) in enumerate(os.walk(path, followlinks=followlinks)):
+            # skip hidden dirs
+            if include is not None and i==0:   d[:] = [o for o in d if o in include]
+            elif exclude is not None and i==0: d[:] = [o for o in d if o not in exclude]
+            else:                              d[:] = [o for o in d if not o.startswith('.')]
+            res += _get_bio_files(path, p, f, extensions)
+        if presort: res = sorted(res, key=lambda p: _path_to_same_str(p), reverse=False)
+        return res
+    else:
+        f = [o.name for o in os.scandir(path) if o.is_file()]
+        res = _get_bio_files(path, path, f, extensions)
+        if presort: res = sorted(res, key=lambda p: _path_to_same_str(p), reverse=False)
+        return res
+
 def check_seqfiletype(filename:PathOrStr, extensions:Collection[str]=supported_seqfiletypes):
     if isinstance(filename, Path): 
         seqfiletype = ''.join(filename.suffixes)
@@ -52,13 +80,12 @@ class BioTextList(TextList):
     def from_folder(cls, path:PathOrStr='.', extensions:Collection[str]=supported_seqfiletypes, max_seqs_per_file:int=None, recurse:bool=True, **kwargs) -> 'TextList':
         "Creates a SeqList from all sequence files in a folder"
         #get list of files in `path` with seqfile suffixes. `recurse` determines if we search subfolders.
-        files = get_files(path=path, extensions=extensions, recurse=recurse)
+        files = get_bio_files(path=path, extensions=extensions, recurse=recurse)
         #within each file, get (filename, offset, length of sequence) for each read and add to items
         items = []
         for filename in files:
             items.extend(get_items_from_seqfile(filename=filename, extensions=extensions, max_seqs=max_seqs_per_file))
 
-        print(items)
         return cls(items=items, path=path, **kwargs)
 
 class BioLMDataBunch(TextLMDataBunch):
