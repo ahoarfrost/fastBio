@@ -6,17 +6,18 @@ from fastai.text import *
 from iterators import *
 from transform import *
 
-supported_seqfiletypes = ['.fastq']
+supported_seqfiletypes = ['.fastq', '.fastq.abundtrim']
 
 seqfiletype_to_iterator = {
-    '.fastq': FastqIterator
+    '.fastq': FastqIterator,
+    '.fastq.abundtrim': FastqIterator
 }
 
 def check_seqfiletype(filename:PathOrStr, extensions:Collection[str]=supported_seqfiletypes):
     if isinstance(filename, Path): 
-        seqfiletype = filename.suffix
+        seqfiletype = ''.join(filename.suffixes)
     else:
-        seqfiletype = '.'+filename.split('.')[-1]
+        seqfiletype = '.'+'.'.join(filename.split('.')[1:])
     assert seqfiletype in extensions, "Input sequence file type %r is not supported." % seqfiletype
     return seqfiletype
 
