@@ -6,11 +6,15 @@ from fastai.text import *
 from iterators import *
 from transform import *
 
-supported_seqfiletypes = ['.fastq', '.fastq.abundtrim']
+supported_seqfiletypes = ['.fastq', '.fastq.abundtrim', '.fna', '.fasta', '.ffn', '.faa']
 
 seqfiletype_to_iterator = {
     '.fastq': FastqIterator,
-    '.fastq.abundtrim': FastqIterator
+    '.fastq.abundtrim': FastqIterator,
+    '.fna': FastaIterator,
+    '.fasta': FastaIterator,
+    '.ffn': FastaIterator,
+    '.faa': FastaIterator
 }
 
 def _get_bio_files(parent, p, f, extensions):
@@ -129,10 +133,10 @@ class BioLMDataBunch(TextLMDataBunch):
                                    
         
         src = BioTextList.from_folder(path=path, extensions=extensions, recurse=recurse, max_seqs_per_file=max_seqs_per_file, processor=processor)
-        if valid_pct:
-            src = src.split_by_rand_pct(valid_pct=valid_pct, seed=seed)
-        else:
+        if train and valid:
             src = src.split_by_folder(train=train, valid=valid)
+        else:
+            src = src.split_by_rand_pct(valid_pct=valid_pct, seed=seed)
 
         src = src.label_for_lm()
 

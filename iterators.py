@@ -1,3 +1,5 @@
+from Bio.SeqIO.FastaIO import SimpleFastaParser
+
 def FastqIterator(handle, offset=0):
     #this function is copied from FastqGeneralIterator from the BioPython pkg, except added return of offset
     #you only need to provide the 'offset' argument for the situation where you are using the built-in seek() function to skip to a particular line; if you are iterating through all lines this is unnecessary
@@ -71,3 +73,11 @@ def FastqIterator(handle, offset=0):
 
         # Return the record and then continue...
         yield (title_line, seq_string, quality_string, offset)
+
+def FastaIterator(handle, offset=0):
+    for title, seq in SimpleFastaParser(handle):
+        #return empty values for qual/offset
+        qual = ''
+        offset = offset
+        #return the record and continue
+        yield (title, seq, qual, offset)
