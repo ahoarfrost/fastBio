@@ -179,14 +179,17 @@ class BioClasDataBunch(TextClasDataBunch):
                     bs=64, val_bs:int=None, seed:int=None, **kwargs):
 
         path = Path(path).absolute()
-        processor = get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
+
+        processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
                                    min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
+
+        src = BioTextList.from_folder(path=path, vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, recurse=recurse, processor=processor)                                   
         
-        src = BioTextList.from_folder(path=path, extensions=extensions, recurse=recurse, max_seqs_per_file=max_seqs_per_file, processor=processor)
-        if valid_pct:
-            src = src.split_by_rand_pct(valid_pct=valid_pct, seed=seed)
-        else:
+        if train and valid:
             src = src.split_by_folder(train=train, valid=valid)
+        else:
+            src = src.split_by_rand_pct(valid_pct=valid_pct, seed=seed)
+
         src = src.label_from_folder(classes=classes)
         if test is not None: src.add_test_folder(path/test)
 
