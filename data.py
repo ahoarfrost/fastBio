@@ -6,11 +6,10 @@ from fastai.text import *
 from iterators import *
 from transform import *
 
-supported_seqfiletypes = ['.fastq', '.fastq.abundtrim', '.fna', '.fasta', '.ffn', '.faa']
+supported_seqfiletypes = ['.fastq', '.fna', '.fasta', '.ffn', '.faa']
 
 seqfiletype_to_iterator = {
     '.fastq': FastqIterator,
-    '.fastq.abundtrim': FastqIterator,
     '.fna': FastaIterator,
     '.fasta': FastaIterator,
     '.ffn': FastaIterator,
@@ -22,7 +21,7 @@ def _get_bio_files(parent, p, f, extensions):
     if isinstance(extensions,str): extensions = [extensions]
     low_extensions = [e.lower() for e in extensions] if extensions is not None else None
     res = [p/o for o in f if not o.startswith('.')
-           and (extensions is None or f'.{".".join(o.split(".")[1:])}' in low_extensions)]
+           and (extensions is None or f'.{o.split(".")[-1].lower()}' in low_extensions)]
     return res
 
 def get_bio_files(path:PathOrStr, extensions:Collection[str]=None, recurse:bool=True, exclude:Optional[Collection[str]]=None,
@@ -142,7 +141,7 @@ class BioLMDataBunch(TextLMDataBunch):
                     chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None, 
                     bptt=70, bs=64, seed:int=None, **kwargs):
 
-        path = Path(path).absolute()
+        path = Path(path).absolute() 
 
         processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
                                    min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
