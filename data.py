@@ -46,9 +46,9 @@ def get_bio_files(path:PathOrStr, extensions:Collection[str]=None, recurse:bool=
 
 def check_seqfiletype(filename:PathOrStr, extensions:Collection[str]=supported_seqfiletypes):
     if isinstance(filename, Path): 
-        seqfiletype = ''.join(filename.suffixes)
+        seqfiletype = filename.suffix
     else:
-        seqfiletype = '.'+'.'.join(filename.split('.')[1:])
+        seqfiletype = f'.{filename.split(".")[-1].lower()}' 
     assert seqfiletype in extensions, "Input sequence file type %r is not supported." % seqfiletype
     return seqfiletype
 
