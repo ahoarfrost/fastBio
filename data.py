@@ -67,6 +67,18 @@ def get_items_from_seqfile(filename:PathOrStr, extensions:Collection[str]=suppor
     handle.close()
     return items
 
+def get_count_from_seqfile(filename:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, max_seqs:int=None):
+    seqfiletype = check_seqfiletype(filename, extensions)
+    iterator = seqfiletype_to_iterator[seqfiletype]
+    with open(filename, "r") as handle:
+        count = 0
+        for title, seq, qual, offset in iterator(handle):
+            count += 1
+            if max_seqs and count >= max_seqs: 
+                break
+    handle.close()
+    return count
+
 class OpenSeqFileProcessor(PreProcessor):
     "`PreProcessor` that opens the filenames and read the sequences. This is used if creating biotextlists from_folder, because need to know the path of each input for splitting."
     def __init__(self, ds:ItemList=None, extensions:Collection[str]=supported_seqfiletypes, max_seqs:int=None):
@@ -105,6 +117,18 @@ class BioTextList(TextList):
         processor = ifnone(processor, [OpenSeqFileProcessor(), BioTokenizeProcessor(), BioNumericalizeProcessor(vocab=vocab)])
         
         return cls(items=files, path=path, processor=processor, **kwargs)
+
+    def label_from_fname(self, label_cls:Callable=None, max_seqs_per_file:int=None, extensions:Collection[str]=supported_seqfiletypes, **kwargs) -> 'LabelList':
+        #give label to each filename depending on the filename
+        labels = []
+        for o in self.items:
+            #extract label from filename
+            label = ".".join((o.parts if isinstance(o, Path) else o.split(os.path.sep))[-1].split(".")[0:-1])
+            #number of times should repeat that label
+            count = get_count_from_seqfile(filename=o, extensions=extensions, max_seqs=max_seqs_per_file)
+            labels.extend([label]*count)
+
+        return self._label_from_list(labels,label_cls=label_cls, **kwargs)
 
 class BioLMDataBunch(TextLMDataBunch):
     @classmethod
