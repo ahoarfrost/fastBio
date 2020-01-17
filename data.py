@@ -79,6 +79,21 @@ def get_count_from_seqfile(filename:PathOrStr, extensions:Collection[str]=suppor
     handle.close()
     return count
 
+def extract_from_header(filename:PathOrStr, func:Callable, extensions:Collection[str]=supported_seqfiletypes, max_seqs:int=None):
+    seqfiletype = check_seqfiletype(filename, extensions)
+    iterator = seqfiletype_to_iterator[seqfiletype]
+    with open(filename, "r") as handle:
+        extracts = []
+        row = 0
+        for title, seq, qual, offset in iterator(handle):
+            extract = func(title)
+            extracts.append(extract)
+            row += 1
+            if max_seqs and row >= max_seqs: 
+                break
+    handle.close()
+    return extracts
+
 class OpenSeqFileProcessor(PreProcessor):
     "`PreProcessor` that opens the filenames and read the sequences. This is used if creating biotextlists from_folder, because need to know the path of each input for splitting."
     def __init__(self, ds:ItemList=None, extensions:Collection[str]=supported_seqfiletypes, max_seqs:int=None):
@@ -127,6 +142,16 @@ class BioTextList(TextList):
             #number of times should repeat that label
             count = get_count_from_seqfile(filename=o, extensions=extensions, max_seqs=max_seqs_per_file)
             labels.extend([label]*count)
+
+        return self._label_from_list(labels,label_cls=label_cls, **kwargs)
+
+    def label_from_header(self, func:Callable, label_cls:Callable=None, max_seqs_per_file:int=None, extensions:Collection[str]=supported_seqfiletypes, **kwargs) -> 'LabelList':
+        #items need to be a list of filenames, as imported from from_folder (not from_seqfile) 
+        labels = []
+        for o in self.items:
+            #extract label from filename
+            extracts = extract_from_header(filename=o, func=func, extensions=extensions, max_seqs=max_seqs_per_file)
+            labels.extend(extracts)
 
         return self._label_from_list(labels,label_cls=label_cls, **kwargs)
 
