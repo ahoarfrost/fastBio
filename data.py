@@ -107,7 +107,7 @@ class OpenSeqFileProcessor(PreProcessor):
         ds.items = readitems
 
     def process_one(self,item, extensions, max_seqs): 
-        return get_items_from_seqfile(item, extensions=extensions, max_seqs=max_seqs) if isinstance(item, Path) else item
+        return get_items_from_seqfile(item, extensions=extensions, max_seqs=max_seqs) if isinstance(item, Path) else [item]
 
 
 class BioTextList(TextList):
@@ -220,6 +220,7 @@ class BioClasDataBunch(TextClasDataBunch):
     @classmethod
     def from_folder(cls, path:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, max_seqs_per_file:int=None,
                     valid_pct:float=0.2, train:str=None, valid:str=None, test:Optional[str]=None,
+                    label_from_fname:bool=False, label_from_header:bool=False, header_label_func:Callable=None,
                     classes:Collection[str]=None, pad_idx:int=1, pad_first:bool=True, 
                     device:torch.device=None, backwards:bool=False, no_check:bool=False,
                     tokenizer:BioTokenizer=None, vocab:BioVocab=None, 
@@ -238,7 +239,13 @@ class BioClasDataBunch(TextClasDataBunch):
         else:
             src = src.split_by_rand_pct(valid_pct=valid_pct, seed=seed)
 
-        src = src.label_from_folder(classes=classes)
+        if label_from_fname:
+            src = src.label_from_fname(max_seqs_per_file=max_seqs_per_file, extensions=extensions)
+        elif label_from_header:
+            src = src.label_from_header(func=header_label_func, max_seqs_per_file=max_seqs_per_file, extensions=extensions)
+        else:
+            src = src.label_from_folder(classes=classes)
+
         if test is not None: src.add_test_folder(path/test)
 
         d1 = src.databunch(**kwargs)
@@ -254,6 +261,52 @@ class BioClasDataBunch(TextClasDataBunch):
             dataloaders.append(DataLoader(ds, batch_size=val_bs, sampler=sampler, **kwargs))
 
         return cls(*dataloaders, path=path, device=device, collate_fn=collate_fn, no_check=no_check)
+
+    @classmethod
+    def from_multiple_csv(cls, path:PathOrStr, extensions:Collection[str]=['.csv'], recurse:bool=True, max_seqs_per_file:int=None,
+                    delimiter:str=None, header='infer', text_cols:IntsOrStrs=1, label_cols:IntsOrStrs=0, label_delim:str=None,
+                    valid_pct:float=0.2, train:str=None, valid:str=None, test:Optional[str]=None,
+                    classes:Collection[str]=None, pad_idx:int=1, pad_first:bool=True, 
+                    device:torch.device=None, backwards:bool=False, no_check:bool=False,
+                    tokenizer:BioTokenizer=None, vocab:BioVocab=None, 
+                    chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None, 
+                    bs=64, val_bs:int=None, seed:int=None, **kwargs):
+
+        path = Path(path).absolute()
+
+        processor = get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
+                                   min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
+
+        #get a list of csv files in path
+        files = get_bio_files(path=path, extensions=extensions, recurse=recurse)
+        #for each file, read the csv (optionally with max_seqs) and append to the total df
+        train_df, valid_df, test_df = (pd.DataFrame(), pd.DataFrame(), (None if test is None else pd.DataFrame()))
+        for csv_name in files:
+            df = pd.read_csv(csv_name, nrows=max_seqs_per_file, header=header, delimiter=delimiter)
+            df = df.iloc[np.random.permutation(len(df))]
+            cut = int(valid_pct * len(df)) + 1
+            train_chunk, valid_chunk = df[cut:], df[:cut]
+            if test is not None:
+                test_chunk = pd.read_csv(Path(path)/test, header=header, delimiter=delimiter)
+                test_df = test_df.append(test_chunk)
+            train_df = train_df.append(train_chunk)
+            valid_df = valid_df.append(valid_chunk)
+
+        train_df.reset_index(drop=True, inplace=True)
+        valid_df.reset_index(drop=True, inplace=True)
+        if test_df is not None:
+            test_df.reset_index(drop=True, inplace=True)
+
+        if classes is None and is_listy(label_cols) and len(label_cols) > 1: classes = label_cols
+        src = ItemLists(path, BioTextList.from_df(train_df, path, cols=text_cols, processor=processor),
+                        BioTextList.from_df(valid_df, path, cols=text_cols, processor=processor))
+        if cls==TextLMDataBunch: src = src.label_for_lm()
+        else: 
+            if label_delim is not None: src = src.label_from_df(cols=label_cols, classes=classes, label_delim=label_delim)
+            else: src = src.label_from_df(cols=label_cols, classes=classes)
+        if test_df is not None: src.add_test(BioTextList.from_df(test_df, path, cols=text_cols))
+
+        return src.databunch(**kwargs)
 
     @classmethod
     def from_seqfile(cls, path:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, max_seqs_per_file:int=None,
