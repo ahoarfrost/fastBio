@@ -263,7 +263,8 @@ class BioClasDataBunch(TextClasDataBunch):
         return cls(*dataloaders, path=path, device=device, collate_fn=collate_fn, no_check=no_check)
 
     @classmethod
-    def from_multiple_csv(cls, path:PathOrStr, extensions:Collection[str]=['.csv'], recurse:bool=True, max_seqs_per_file:int=None,
+    def from_multiple_csv(cls, path:PathOrStr, extensions:Collection[str]=['.csv'], recurse:bool=True, 
+                    max_seqs_per_file:int=None, skiprows:int=0,
                     delimiter:str=None, header='infer', text_cols:IntsOrStrs=1, label_cols:IntsOrStrs=0, label_delim:str=None,
                     valid_pct:float=0.2, train:str=None, valid:str=None, test:Optional[str]=None,
                     classes:Collection[str]=None, pad_idx:int=1, pad_first:bool=True, 
@@ -279,10 +280,10 @@ class BioClasDataBunch(TextClasDataBunch):
 
         #get a list of csv files in path
         files = get_bio_files(path=path, extensions=extensions, recurse=recurse)
-        #for each file, read the csv (optionally with max_seqs) and append to the total df
+        #for each file, read the csv (optionally with max_seqs and skiprows) and append to the total df
         train_df, valid_df, test_df = (pd.DataFrame(), pd.DataFrame(), (None if test is None else pd.DataFrame()))
         for csv_name in files:
-            df = pd.read_csv(csv_name, nrows=max_seqs_per_file, header=header, delimiter=delimiter)
+            df = pd.read_csv(csv_name, nrows=max_seqs_per_file, skiprows=range(1,skiprows+1), header=header, delimiter=delimiter)
             df = df.iloc[np.random.permutation(len(df))]
             cut = int(valid_pct * len(df)) + 1
             train_chunk, valid_chunk = df[cut:], df[:cut]
