@@ -8,7 +8,7 @@ supported_languages = {'dna':['A','C','G','T']}
 
 UNK, PAD, BOS, EOS = 'xxunk', 'xxpad', 'xxbos', 'xxeos'
 defaults.special_tokens = [UNK, PAD, BOS, EOS]
-
+ 
 class BioTokenizer():
     """
     tokenize text with multiprocessing. 
