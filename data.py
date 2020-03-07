@@ -195,7 +195,7 @@ class BioLMDataBunch(TextLMDataBunch):
 
     @classmethod
     def from_folder(cls, path:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, ksize:int=None, 
-                    max_seqs_per_file:int=None, valid_max_seqs:int=None, skiprows:int=0, valid_skiprows:int=0,
+                    max_seqs_per_file:int=None, skiprows:int=0, 
                     valid_pct:float=0.2, train:str=None, valid:str=None, test:Optional[str]=None,
                     tokenizer:BioTokenizer=None, vocab:BioVocab=None, collate_fn:Callable=data_collate, device:torch.device=None, no_check:bool=False, backwards:bool=False,
                     chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None, 
@@ -204,13 +204,11 @@ class BioLMDataBunch(TextLMDataBunch):
         path = Path(path).absolute() 
         
         if train and valid:
-            train_processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file, ksize=ksize, skiprows=skiprows)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
+            processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file, ksize=ksize, skiprows=skiprows)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
                                    min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
-            valid_processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=valid_max_seqs, ksize=ksize, skiprows=valid_skiprows)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
-                                   min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
-
-            src = ItemLists(path, BioTextList.from_folder(path=Path(path)/Path(train).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=train_processor),
-                        BioTextList.from_folder(path=Path(path)/Path(valid).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=valid_max_seqs, skiprows=valid_skiprows, recurse=recurse, processor=valid_processor))
+            
+            src = ItemLists(path, BioTextList.from_folder(path=Path(path)/Path(train).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=processor),
+                        BioTextList.from_folder(path=Path(path)/Path(valid).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=processor))
 
         else:
             processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file, ksize=ksize)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
