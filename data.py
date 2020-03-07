@@ -52,7 +52,7 @@ def check_seqfiletype(filename:PathOrStr, extensions:Collection[str]=supported_s
     assert seqfiletype in extensions, "Input sequence file type %r is not supported." % seqfiletype
     return seqfiletype
 
-def get_items_from_seqfile(filename:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, max_seqs:int=None, ksize:int=None):
+def get_items_from_seqfile(filename:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, max_seqs:int=None, skiprows:int=0, ksize:int=None):
     seqfiletype = check_seqfiletype(filename, extensions)
     iterator = seqfiletype_to_iterator[seqfiletype]
     with open(filename, "r") as handle:
@@ -60,10 +60,10 @@ def get_items_from_seqfile(filename:PathOrStr, extensions:Collection[str]=suppor
         row = 0
         for title, seq, qual, offset in iterator(handle):
             #get (filename, offset, length of sequence) for each read and add to items
-            if len(seq)>=ksize:
-                items.append(seq)
             row += 1
-            if max_seqs and row >= max_seqs: 
+            if len(seq)>=ksize and row>=skiprows:
+                items.append(seq)
+            if max_seqs and (row-skiprows)>=max_seqs: 
                 break
     handle.close()
     return items
@@ -104,19 +104,20 @@ def get_df_from_files(files, max_seqs_per_file, skiprows, header, delimiter):
 
 class OpenSeqFileProcessor(PreProcessor):
     "`PreProcessor` that opens the filenames and read the sequences. This is used if creating biotextlists from_folder, because need to know the path of each input for splitting."
-    def __init__(self, ds:ItemList=None, extensions:Collection[str]=supported_seqfiletypes, max_seqs:int=None, ksize:int=None):
+    def __init__(self, ds:ItemList=None, extensions:Collection[str]=supported_seqfiletypes, max_seqs:int=None, skiprows:int=0, ksize:int=None):
         self.extensions = extensions
         self.max_seqs = max_seqs
         self.ksize = ksize
+        self.skiprows=skiprows
 
     def process(self, ds:Collection): 
         readitems = []
         for item in ds.items:
-            readitems.extend(self.process_one(item, self.extensions, self.max_seqs, self.ksize))
+            readitems.extend(self.process_one(item, self.extensions, self.max_seqs, self.skiprows, self.ksize))
         ds.items = readitems
 
-    def process_one(self,item, extensions, max_seqs, ksize): 
-        return get_items_from_seqfile(item, extensions=extensions, max_seqs=max_seqs, ksize=ksize) if isinstance(item, Path) else [item]
+    def process_one(self,item, extensions, max_seqs, skiprows, ksize): 
+        return get_items_from_seqfile(item, extensions=extensions, max_seqs=max_seqs, skiprows=skiprows, ksize=ksize) if isinstance(item, Path) else [item]
 
 
 class BioTextList(TextList):
@@ -124,22 +125,22 @@ class BioTextList(TextList):
         super().__init__(items, **kwargs)
        
     @classmethod
-    def from_seqfile(cls, filename:PathOrStr, path:PathOrStr='.', extensions:Collection[str]=supported_seqfiletypes, max_seqs_per_file:int=None, ksize:int=None, **kwargs)->'TextList':
+    def from_seqfile(cls, filename:PathOrStr, path:PathOrStr='.', extensions:Collection[str]=supported_seqfiletypes, max_seqs_per_file:int=None, skiprows:int=0, ksize:int=None, **kwargs)->'TextList':
         "Creates a SeqList from a single sequence file (e.g. .fastq, .fasta, etc.)"
         #get (filename, offset) tuple for each read and add to items
-        items = get_items_from_seqfile(filename=filename, extensions=extensions, max_seqs=max_seqs_per_file, ksize=ksize)
+        items = get_items_from_seqfile(filename=filename, extensions=extensions, max_seqs=max_seqs_per_file, skiprows=skiprows, ksize=ksize)
         
         return cls(items=items, path=path, **kwargs)
 
     @classmethod
     def from_folder(cls, path:PathOrStr='.', vocab:Vocab=None, extensions:Collection[str]=supported_seqfiletypes, 
-                        max_seqs_per_file:int=None, recurse:bool=True, processor:PreProcessor=None, **kwargs) -> 'TextList':
+                        max_seqs_per_file:int=None, skiprows:int=0, recurse:bool=True, processor:PreProcessor=None, **kwargs) -> 'TextList':
         "Creates a SeqList from all sequence files in a folder"
         #get list of files in `path` with seqfile suffixes. `recurse` determines if we search subfolders.
         files = get_bio_files(path=path, extensions=extensions, recurse=recurse)
         #define processor with OpenSeqFileProcessor since items are now a list of filepaths rather than Seq objects
-        processor = ifnone(processor, [OpenSeqFileProcessor(), BioTokenizeProcessor(), BioNumericalizeProcessor(vocab=vocab)])
-        
+        processor = ifnone(processor, [OpenSeqFileProcessor(max_seqs=max_seqs_per_file, skiprows=skiprows), BioTokenizeProcessor(), BioNumericalizeProcessor(vocab=vocab)])
+
         return cls(items=files, path=path, processor=processor, **kwargs)
 
     def label_from_fname(self, label_cls:Callable=None, max_seqs_per_file:int=None, extensions:Collection[str]=supported_seqfiletypes, **kwargs) -> 'LabelList':
@@ -167,7 +168,7 @@ class BioTextList(TextList):
 class BioLMDataBunch(TextLMDataBunch):
     @classmethod
     def from_seqfile(cls, path:PathOrStr, filename:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, max_seqs_per_file:int=None,
-                        valid_pct:float=0.2, 
+                        valid_pct:float=0.2, skiprows:int=0,
                         bptt=70, bs=64, seed:int=None, collate_fn:Callable=data_collate, device:torch.device=None, no_check:bool=False, backwards:bool=False,
                         vocab:BioVocab=None, tokenizer:BioTokenizer=None, 
                         chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None,
@@ -176,7 +177,7 @@ class BioLMDataBunch(TextLMDataBunch):
         processor = get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
                                    min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
 
-        src = BioTextList.from_seqfile(filename=filename, path=path, extensions=extensions, max_seqs_per_file=max_seqs_per_file, processor=processor)
+        src = BioTextList.from_seqfile(filename=filename, path=path, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, processor=processor)
         src = src.split_by_rand_pct(valid_pct=valid_pct, seed=seed)
         src = src.label_for_lm()
 
@@ -193,22 +194,28 @@ class BioLMDataBunch(TextLMDataBunch):
         return cls(*dls, path=path, device=device, collate_fn=collate_fn, no_check=no_check)
 
     @classmethod
-    def from_folder(cls, path:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, max_seqs_per_file:int=None, ksize:int=None,
+    def from_folder(cls, path:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, ksize:int=None, 
+                    max_seqs_per_file:int=None, valid_max_seqs:int=None, skiprows:int=0, valid_skiprows:int=0,
                     valid_pct:float=0.2, train:str=None, valid:str=None, test:Optional[str]=None,
                     tokenizer:BioTokenizer=None, vocab:BioVocab=None, collate_fn:Callable=data_collate, device:torch.device=None, no_check:bool=False, backwards:bool=False,
                     chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None, 
                     bptt=70, bs=64, seed:int=None, **kwargs):
 
         path = Path(path).absolute() 
-
-        processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file, ksize=ksize)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
-                                   min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
-
-        src = BioTextList.from_folder(path=path, vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, recurse=recurse, processor=processor)                                   
         
         if train and valid:
-            src = src.split_by_folder(train=train, valid=valid)
+            train_processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file, ksize=ksize, skiprows=skiprows)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
+                                   min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
+            valid_processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=valid_max_seqs, ksize=ksize, skiprows=valid_skiprows)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
+                                   min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
+
+            src = ItemLists(path, BioTextList.from_folder(path=Path(path)/Path(train).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=train_processor),
+                        BioTextList.from_folder(path=Path(path)/Path(valid).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=valid_max_seqs, skiprows=valid_skiprows, recurse=recurse, processor=valid_processor))
+
         else:
+            processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file, ksize=ksize)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
+                                   min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
+            src = BioTextList.from_folder(path=path, vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, recurse=recurse, processor=processor)                                   
             src = src.split_by_rand_pct(valid_pct=valid_pct, seed=seed)
 
         src = src.label_for_lm()
@@ -227,7 +234,8 @@ class BioLMDataBunch(TextLMDataBunch):
 
 class BioClasDataBunch(TextClasDataBunch):
     @classmethod
-    def from_folder(cls, path:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, max_seqs_per_file:int=None, ksize:int=None,
+    def from_folder(cls, path:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, 
+                    max_seqs_per_file:int=None, ksize:int=None,
                     valid_pct:float=0.2, train:str=None, valid:str=None, test:Optional[str]=None,
                     label_from_fname:bool=False, label_from_header:bool=False, header_label_func:Callable=None,
                     classes:Collection[str]=None, pad_idx:int=1, pad_first:bool=True, 
