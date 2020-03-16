@@ -152,6 +152,8 @@ class BioTextList(TextList):
             #number of times should repeat that label
             count = get_count_from_seqfile(filename=o, extensions=extensions, max_seqs=max_seqs_per_file)
             labels.extend([label]*count)
+        #classes = list(set(labels))
+        #kwargs = {dict(classes=classes),**kwargs}
 
         return self._label_from_list(labels,label_cls=label_cls, **kwargs)
 
@@ -233,7 +235,8 @@ class BioLMDataBunch(TextLMDataBunch):
 class BioClasDataBunch(TextClasDataBunch):
     @classmethod
     def from_folder(cls, path:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, 
-                    max_seqs_per_file:int=None, ksize:int=None,
+                    max_seqs_per_file:int=None, skiprows:int=0, 
+                    ksize:int=None,
                     valid_pct:float=0.2, train:str=None, valid:str=None, test:Optional[str]=None,
                     label_from_fname:bool=False, label_from_header:bool=False, header_label_func:Callable=None,
                     classes:Collection[str]=None, pad_idx:int=1, pad_first:bool=True, 
@@ -244,18 +247,22 @@ class BioClasDataBunch(TextClasDataBunch):
 
         path = Path(path).absolute()
 
-        processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file, ksize=ksize)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
+        processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file, skiprows=skiprows, ksize=ksize)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
                                    min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
 
-        src = BioTextList.from_folder(path=path, vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, recurse=recurse, processor=processor)                                   
+        src = BioTextList.from_folder(path=path, vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=processor)                                   
         
+        if label_from_fname:
+            classes = list(set([x.stem for x in src.items]))
+
         if train and valid:
             src = src.split_by_folder(train=train, valid=valid)
         else:
             src = src.split_by_rand_pct(valid_pct=valid_pct, seed=seed)
+            
 
         if label_from_fname:
-            src = src.label_from_fname(max_seqs_per_file=max_seqs_per_file, extensions=extensions)
+            src = src.label_from_fname(max_seqs_per_file=max_seqs_per_file, extensions=extensions, classes=classes)
         elif label_from_header:
             src = src.label_from_header(func=header_label_func, max_seqs_per_file=max_seqs_per_file, extensions=extensions)
         else:
@@ -268,7 +275,7 @@ class BioClasDataBunch(TextClasDataBunch):
         val_bs = ifnone(val_bs, bs)
         collate_fn = partial(pad_collate, pad_idx=pad_idx, pad_first=pad_first, backwards=backwards)
         train_sampler = SortishSampler(datasets[0].x, key=lambda t: len(datasets[0][t][0].data), bs=bs)
-        train_dl = DataLoader(datasets[0], batch_size=bs, sampler=train_sampler, drop_last=True, **kwargs)
+        train_dl = DataLoader(datasets[0], batch_size=bs, sampler=train_sampler, **kwargs)
         dataloaders = [train_dl]
         for ds in datasets[1:]:
             lengths = [len(t) for t in ds.x.items]
@@ -335,7 +342,7 @@ class BioClasDataBunch(TextClasDataBunch):
         val_bs = ifnone(val_bs, bs)
         collate_fn = partial(pad_collate, pad_idx=pad_idx, pad_first=pad_first, backwards=backwards)
         train_sampler = SortishSampler(datasets[0].x, key=lambda t: len(datasets[0][t][0].data), bs=bs)
-        train_dl = DataLoader(datasets[0], batch_size=bs, sampler=train_sampler, drop_last=True, **kwargs)
+        train_dl = DataLoader(datasets[0], batch_size=bs, sampler=train_sampler, **kwargs)
         dataloaders = [train_dl]
         for ds in datasets[1:]:
             lengths = [len(t) for t in ds.x.items]
@@ -371,7 +378,43 @@ class BioClasDataBunch(TextClasDataBunch):
         val_bs = ifnone(val_bs, bs)
         collate_fn = partial(pad_collate, pad_idx=pad_idx, pad_first=pad_first, backwards=backwards)
         train_sampler = SortishSampler(datasets[0].x, key=lambda t: len(datasets[0][t][0].data), bs=bs)
-        train_dl = DataLoader(datasets[0], batch_size=bs, sampler=train_sampler, drop_last=True, **kwargs)
+        train_dl = DataLoader(datasets[0], batch_size=bs, sampler=train_sampler, **kwargs)
+        dataloaders = [train_dl]
+        for ds in datasets[1:]:
+            lengths = [len(t) for t in ds.x.items]
+            sampler = SortSampler(ds.x, key=lengths.__getitem__)
+            dataloaders.append(DataLoader(ds, batch_size=val_bs, sampler=sampler, **kwargs))
+
+        return cls(*dataloaders, path=path, device=device, collate_fn=collate_fn, no_check=no_check)
+
+    @classmethod
+    def from_df(cls, path:PathOrStr, train_df:DataFrame, valid_df:DataFrame, test_df:Optional[DataFrame]=None,
+                tokenizer:Tokenizer=None, vocab:Vocab=None, classes:Collection[str]=None, 
+                text_cols:IntsOrStrs=1,label_cols:IntsOrStrs=0, 
+                pad_idx:int=1, pad_first:bool=True, backwards:bool=False,
+                label_delim:str=None, chunksize:int=10000, max_vocab:int=60000,
+                min_freq:int=2, mark_fields:bool=False, include_bos:bool=True, include_eos:bool=False, device:torch.device=None, no_check:bool=False,
+                bs=64, val_bs:int=None, seed:int=None, **kwargs) -> DataBunch:
+
+        path = Path(path).absolute()
+        processor = get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
+                                   min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
+        
+        if classes is None and is_listy(label_cols) and len(label_cols) > 1: classes = label_cols
+        src = ItemLists(path, TextList.from_df(train_df, path, cols=text_cols, processor=processor),
+                        TextList.from_df(valid_df, path, cols=text_cols, processor=processor))
+        if cls==TextLMDataBunch: src = src.label_for_lm()
+        else: 
+            if label_delim is not None: src = src.label_from_df(cols=label_cols, classes=classes, label_delim=label_delim)
+            else: src = src.label_from_df(cols=label_cols, classes=classes)
+        if test_df is not None: src.add_test(TextList.from_df(test_df, path, cols=text_cols))
+        
+        d1 = src.databunch(**kwargs)
+        datasets = cls._init_ds(d1.train_ds, d1.valid_ds, d1.test_ds)
+        val_bs = ifnone(val_bs, bs)
+        collate_fn = partial(pad_collate, pad_idx=pad_idx, pad_first=pad_first, backwards=backwards)
+        train_sampler = SortishSampler(datasets[0].x, key=lambda t: len(datasets[0][t][0].data), bs=bs)
+        train_dl = DataLoader(datasets[0], batch_size=bs, sampler=train_sampler, **kwargs)
         dataloaders = [train_dl]
         for ds in datasets[1:]:
             lengths = [len(t) for t in ds.x.items]
