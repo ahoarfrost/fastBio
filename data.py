@@ -167,6 +167,56 @@ class BioTextList(TextList):
 
         return self._label_from_list(labels,label_cls=label_cls, **kwargs)
 
+class BioItemLists(ItemLists):
+
+    def __getattr__(self, k):
+        print('trying to get label for lm')
+        ft = getattr(self.train, k)
+        if not isinstance(ft, Callable): return ft
+        fv = getattr(self.valid, k)
+        assert isinstance(fv, Callable)
+        def _inner(*args, **kwargs):
+            self.train = ft(*args, from_item_lists=True, **kwargs)
+            assert isinstance(self.train, LabelList)
+            kwargs['label_cls'] = self.train.y.__class__
+            self.valid = fv(*args, from_item_lists=True, **kwargs)
+            self.__class__ = BioLabelLists
+            self.process()
+            return self
+        return _inner
+
+class BioLabelLists(LabelLists):
+    "A `LabelList` for each of `train` and `valid` (optional `test`)."
+    def get_processors(self):
+        "Read the default class processors if none have been set."
+        default_xp = get_lol_processor()
+        default_yp = []
+        #enable separate processors for train and valid set (intended for reading different numbers of sequences from files in train and valid sets)
+        xp = ifnone(self.train.x.processor, default_xp)
+        yp = ifnone(self.train.y.processor, default_yp)
+        v_xp = ifnone(self.valid.x.processor, default_xp)
+        v_yp = ifnone(self.valid.y.processor, default_yp)
+        return xp,yp,v_xp,v_yp
+
+    def process(self):
+        "Process the inner datasets."
+        print('getting processors')
+        xp,yp,v_xp,v_yp = self.get_processors()
+        print(xp,yp,v_xp,v_yp)
+        #process train
+        print('processing train')
+        src.lists[0].process(xp,yp,name='train')
+        #process valid
+        print('processing valid')
+        src.lists[1].process(v_xp,v_yp,name='valid')
+        #process test if it exists with the same processor as valid
+        if len(src.lists)>2:
+            src.lists[2].process(v_xp,v_yp,name='test')
+        #progress_bar clear the outputs so in some case warnings issued during processing disappear.
+        for ds in self.lists:
+            if getattr(ds, 'warn', False): warn(ds.warn)
+        return self
+
 class BioLMDataBunch(TextLMDataBunch):
     @classmethod
     def from_seqfile(cls, path:PathOrStr, filename:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, max_seqs_per_file:int=None,
@@ -197,20 +247,22 @@ class BioLMDataBunch(TextLMDataBunch):
 
     @classmethod
     def from_folder(cls, path:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, ksize:int=None, 
-                    max_seqs_per_file:int=None, skiprows:int=0, 
+                    max_seqs_per_file:int=None, val_maxseqs:int=None, skiprows:int=0, 
                     valid_pct:float=0.2, train:str=None, valid:str=None, test:Optional[str]=None,
                     tokenizer:BioTokenizer=None, vocab:BioVocab=None, collate_fn:Callable=data_collate, device:torch.device=None, no_check:bool=False, backwards:bool=False,
                     chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None, 
-                    bptt=70, bs=64, seed:int=None, **kwargs):
+                    bptt=100, bs=64, seed:int=None, **kwargs):
 
         path = Path(path).absolute() 
-        
+         
         if train and valid:
             processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file, ksize=ksize, skiprows=skiprows)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
                                    min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
+            v_processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=val_maxseqs, ksize=ksize, skiprows=skiprows)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
+                                   min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
             
-            src = ItemLists(path, BioTextList.from_folder(path=Path(path)/Path(train).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=processor),
-                        BioTextList.from_folder(path=Path(path)/Path(valid).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=processor))
+            src = BioItemLists(path, BioTextList.from_folder(path=Path(path)/Path(train).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=processor),
+                        BioTextList.from_folder(path=Path(path)/Path(valid).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=val_maxseqs, skiprows=skiprows, recurse=recurse, processor=v_processor))
 
         else:
             processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file, ksize=ksize)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
