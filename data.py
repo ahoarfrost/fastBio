@@ -113,11 +113,11 @@ class OpenSeqFileProcessor(PreProcessor):
     def process(self, ds:Collection): 
         readitems = []
         for item in ds.items:
-            readitems.extend(self.process_one(item, self.extensions, self.max_seqs, self.skiprows, self.ksize))
+            readitems.extend(self.process_one(item))
         ds.items = readitems
 
-    def process_one(self,item, extensions, max_seqs, skiprows, ksize): 
-        return get_items_from_seqfile(item, extensions=extensions, max_seqs=max_seqs, skiprows=skiprows, ksize=ksize) if isinstance(item, Path) else [item]
+    def process_one(self,item): 
+        return get_items_from_seqfile(item, extensions=self.extensions, max_seqs=self.max_seqs, skiprows=self.skiprows, ksize=self.ksize) if isinstance(item, Path) else [item]
 
 
 class BioTextList(TextList):
@@ -152,10 +152,10 @@ class BioTextList(TextList):
             #number of times should repeat that label
             count = get_count_from_seqfile(filename=o, extensions=extensions, max_seqs=max_seqs_per_file)
             labels.extend([label]*count)
-        #classes = list(set(labels))
+        classes = list(set(labels))
         #kwargs = {dict(classes=classes),**kwargs}
 
-        return self._label_from_list(labels,label_cls=label_cls, **kwargs)
+        return self._label_from_list([labels],label_cls=label_cls, classes=classes, **kwargs)
 
     def label_from_header(self, func:Callable, label_cls:Callable=None, max_seqs_per_file:int=None, extensions:Collection[str]=supported_seqfiletypes, **kwargs) -> 'LabelList':
         #items need to be a list of filenames, as imported from from_folder (not from_seqfile) 
@@ -280,23 +280,26 @@ class BioClasDataBunch(TextClasDataBunch):
 
         processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file, skiprows=skiprows, ksize=ksize)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
                                    min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
-
-        src = BioTextList.from_folder(path=path, vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=processor)                                   
         
-        if label_from_fname:
-            classes = list(set([x.stem for x in src.items]))
-
         if train and valid:
-            src = src.split_by_folder(train=train, valid=valid)
+            src = BioItemLists(path, BioTextList.from_folder(path=Path(path)/Path(train).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=processor),
+                        BioTextList.from_folder(path=Path(path)/Path(valid).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=processor))
         else:
+            src = BioTextList.from_folder(path=path, vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=processor)                                   
             src = src.split_by_rand_pct(valid_pct=valid_pct, seed=seed)
 
         if label_from_fname:
-            src = src.label_from_fname(max_seqs_per_file=max_seqs_per_file, extensions=extensions, classes=classes)
+            cl = list(set([x.stem for x in src.items]))
+            if len(cl)>2:
+                label_cls=MultiCategoryList
+            else:
+                label_cls=None
+            src = src.label_from_fname(max_seqs_per_file=max_seqs_per_file, label_cls=label_cls, extensions=extensions, classes=classes)
         elif label_from_header:
             src = src.label_from_header(func=header_label_func, max_seqs_per_file=max_seqs_per_file, extensions=extensions)
         else:
             src = src.label_from_folder(classes=classes)
+            label_cls(labels, path=self.path, **kwargs)
 
         if test is not None: src.add_test_folder(path/test)
 
