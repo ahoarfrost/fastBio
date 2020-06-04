@@ -119,10 +119,15 @@ class OpenSeqFileProcessor(PreProcessor):
     def process_one(self,item): 
         return get_items_from_seqfile(item, extensions=self.extensions, max_seqs=self.max_seqs, skiprows=self.skiprows, ksize=self.ksize) if isinstance(item, Path) else [item]
 
-
 class BioTextList(TextList):
     def __init__(self, items:Iterator, vocab:BioVocab=None, pad_idx:int=1, sep=' ', **kwargs):
         super().__init__(items, **kwargs)
+
+    def label_for_lm(self, **kwargs):
+        "A special labelling method for language models."
+        self.__class__ = BioLMTextList
+        kwargs['label_cls'] = LMLabelList
+        return self.label_const(0, **kwargs)
        
     @classmethod
     def from_seqfile(cls, filename:PathOrStr, path:PathOrStr='.', extensions:Collection[str]=supported_seqfiletypes, max_seqs_per_file:int=None, skiprows:int=0, ksize:int=None, **kwargs)->'TextList':
@@ -212,36 +217,16 @@ class BioLabelLists(LabelLists):
             if getattr(ds, 'warn', False): warn(ds.warn)
         return self
 
-class BioLMDataBunch(TextLMDataBunch):
+class BioDataBunch(TextDataBunch):
     @classmethod
-    def from_seqfile(cls, path:PathOrStr, filename:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, max_seqs_per_file:int=None,
-                        valid_pct:float=0.2, skiprows:int=0,
-                        seed:int=None, 
-                        vocab:BioVocab=None, tokenizer:BioTokenizer=None, 
-                        chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None,
-                        **kwargs:Any) -> DataBunch:
-        "Create from a sequence file."
-        processor = get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
-                                   min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
-
-        src = BioTextList.from_seqfile(filename=filename, path=path, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, processor=processor)
-        src = src.split_by_rand_pct(valid_pct=valid_pct, seed=seed)
-        src = src.label_for_lm()
-
-        if test is not None: src.add_test_folder(path/test)
-
-        return src.databunch(**kwargs)
-
-    @classmethod
-    def from_folder(cls, path:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, ksize:int=None, 
+    def from_folder(cls, path:PathOrStr, train:str='train', valid:str='valid', test:Optional[str]=None, valid_pct:float=0.2,
+                    extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, ksize:int=None,
                     max_seqs_per_file:int=None, val_maxseqs:int=None, skiprows:int=0, val_skiprows:int=0,
-                    valid_pct:float=0.2, train:str=None, valid:str=None, test:Optional[str]=None,
-                    tokenizer:BioTokenizer=None, vocab:BioVocab=None,
-                    chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None, 
-                    seed:int=None, **kwargs) -> DataBunch:
+                    classes:Collection[Any]=None, tokenizer:Tokenizer=None, vocab:Vocab=None, chunksize:int=10000, max_vocab:int=60000,
+                    min_freq:int=2, mark_fields:bool=False, include_bos:bool=True, include_eos:bool=False, seed:int=None, **kwargs):
+        "Create a `BioDataBunch` from fasta/sequence files in folders."
+        path = Path(path).absolute()
 
-        path = Path(path).absolute() 
-        
         if train and valid:
             processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file, ksize=ksize, skiprows=skiprows)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
                                    min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
@@ -257,50 +242,48 @@ class BioLMDataBunch(TextLMDataBunch):
             src = BioTextList.from_folder(path=path, vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, recurse=recurse, processor=processor)                                   
             src = src.split_by_rand_pct(valid_pct=valid_pct, seed=seed)
 
-        src = src.label_for_lm()
+        src = src.label_for_lm() if cls==BioLMDataBunch else src.label_from_folder(classes=classes)
+        if test is not None: src.add_test_folder(path/test)
+        return src.databunch(**kwargs)
+
+    @classmethod
+    def from_seqfile(cls, path:PathOrStr, filename:PathOrStr, extensions:Collection[str]=supported_seqfiletypes,
+                    max_seqs_per_file:int=None,skiprows:int=0,valid_pct:float=0.2, seed:int=None, 
+                    vocab:BioVocab=None, tokenizer:BioTokenizer=None,
+                    chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None,
+                    label_func:Callable=None, **kwargs:Any):
+        #Create from sequence file. Not recommended for classifiers - you need to provide a fairly complicated labeling function
+        processor = get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
+                                   min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
+        
+        src = BioTextList.from_seqfile(filename=filename, path=path, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, processor=processor)
+        src = src.split_by_rand_pct(valid_pct=valid_pct, seed=seed)
+        src = src.label_for_lm() if cls==BioLMDataBunch else src.label_from_func(label_func, **kwargs)
 
         if test is not None: src.add_test_folder(path/test)
 
         return src.databunch(**kwargs)
 
-class BioClasDataBunch(TextClasDataBunch):
     @classmethod
-    def from_folder(cls, path:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, 
-                    max_seqs_per_file:int=None, skiprows:int=0, 
-                    ksize:int=None,
-                    valid_pct:float=0.2, train:str=None, valid:str=None, test:Optional[str]=None,
-                    label_from_fname:bool=False, label_from_header:bool=False, header_label_func:Callable=None,
-                    classes:Collection[str]=None, 
-                    tokenizer:BioTokenizer=None, vocab:BioVocab=None, 
-                    chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None, 
-                    seed:int=None, **kwargs) -> DataBunch:
+    def from_df(cls, path:PathOrStr, train_df:DataFrame, valid_df:DataFrame, test_df:Optional[DataFrame]=None,
+                tokenizer:Tokenizer=None, vocab:Vocab=None, classes:Collection[str]=None, 
+                text_cols:IntsOrStrs=1,label_cols:IntsOrStrs=0, 
+                label_delim:str=None, chunksize:int=10000, max_vocab:int=60000,
+                min_freq:int=2, mark_fields:bool=False, include_bos:bool=True, include_eos:bool=False,
+                seed:int=None, **kwargs) -> DataBunch:
 
         path = Path(path).absolute()
-
-        processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file, skiprows=skiprows, ksize=ksize)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
+        processor = get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
                                    min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
         
-        if train and valid:
-            src = BioItemLists(path, BioTextList.from_folder(path=Path(path)/Path(train).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=processor),
-                        BioTextList.from_folder(path=Path(path)/Path(valid).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=processor))
-        else:
-            src = BioTextList.from_folder(path=path, vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=processor)                                   
-            src = src.split_by_rand_pct(valid_pct=valid_pct, seed=seed)
-
-        if label_from_fname:
-            cl = list(set([x.stem for x in src.items]))
-            if len(cl)>2:
-                label_cls=MultiCategoryList
-            else:
-                label_cls=None
-            src = src.label_from_fname(max_seqs_per_file=max_seqs_per_file, label_cls=label_cls, extensions=extensions, classes=classes)
-        elif label_from_header:
-            src = src.label_from_header(func=header_label_func, max_seqs_per_file=max_seqs_per_file, extensions=extensions)
-        else:
-            src = src.label_from_folder(classes=classes)
-            label_cls(labels, path=self.path, **kwargs)
-
-        if test is not None: src.add_test_folder(path/test)
+        if classes is None and is_listy(label_cols) and len(label_cols) > 1: classes = label_cols
+        src = ItemLists(path, TextList.from_df(train_df, path, cols=text_cols, processor=processor),
+                        TextList.from_df(valid_df, path, cols=text_cols, processor=processor))
+        if cls==TextLMDataBunch: src = src.label_for_lm()
+        else: 
+            if label_delim is not None: src = src.label_from_df(cols=label_cols, classes=classes, label_delim=label_delim)
+            else: src = src.label_from_df(cols=label_cols, classes=classes)
+        if test_df is not None: src.add_test(TextList.from_df(test_df, path, cols=text_cols))
 
         return src.databunch(**kwargs)
 
@@ -340,7 +323,6 @@ class BioClasDataBunch(TextClasDataBunch):
                     test_df = test_df.append(test_chunk)
                 train_df = train_df.append(train_chunk)
                 valid_df = valid_df.append(valid_chunk)
-
         train_df.reset_index(drop=True, inplace=True)
         valid_df.reset_index(drop=True, inplace=True)
         
@@ -357,50 +339,42 @@ class BioClasDataBunch(TextClasDataBunch):
         if test_df is not None: src.add_test(BioTextList.from_df(test_df, path, cols=text_cols))
 
         return src.databunch(**kwargs)
-
-        d1 = src.databunch(**kwargs)
-
+    
+class BioLMDataBunch(BioDataBunch):
+    "Create a `BioDataBunch` suitable for training a language model. This is the same as TextLMDataBunch but inherits from BioDataBunch."
     @classmethod
-    def from_seqfile(cls, path:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, max_seqs_per_file:int=None,
-                    valid_pct:float=0.2, label_func:Callable=None,
-                    classes:Collection[str]=None, 
-                    tokenizer:BioTokenizer=None, vocab:BioVocab=None, 
-                    chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None, 
-                    seed:int=None, **kwargs) -> DataBunch:
+    def create(cls, train_ds, valid_ds, test_ds=None, path:PathOrStr='.', no_check:bool=False, bs:int=64, val_bs:int=None,
+               num_workers:int=0, device:torch.device=None, collate_fn:Callable=data_collate,
+               dl_tfms:Optional[Collection[Callable]]=None, bptt:int=70, backwards:bool=False, **dl_kwargs) -> DataBunch:
+        "Create a `BioDataBunch` in `path` from the `datasets` for language modelling. Passes `**dl_kwargs` on to `DataLoader()`"
+        datasets = cls._init_ds(train_ds, valid_ds, test_ds)
+        val_bs = ifnone(val_bs, bs)
+        datasets = [LanguageModelPreLoader(ds, shuffle=(i==0), bs=(bs if i==0 else val_bs), bptt=bptt, backwards=backwards)
+                    for i,ds in enumerate(datasets)]
+        val_bs = bs
+        dls = [DataLoader(d, b, shuffle=False, **dl_kwargs) for d,b in zip(datasets, (bs,val_bs,val_bs,val_bs)) if d is not None]
+        return cls(*dls, path=path, device=device, dl_tfms=dl_tfms, collate_fn=collate_fn, no_check=no_check)
 
-        "Create from a sequence file."
-        path = Path(path).absolute()
-        processor = get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
-                                   min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
-
-        src = BioTextList.from_seqfile(filename=filename, path=path, extensions=extensions, max_seqs_per_file=max_seqs_per_file, processor=processor)
-        src = src.split_by_rand_pct(valid_pct=valid_pct, seed=seed)
-        if label_func:
-            src = src.label_from_func(label_func)
-
-        if test is not None: src.add_test_folder(path/test)
-
-        return src.databunch(**kwargs)
-
+class BioClasDataBunch(BioDataBunch):
+    "Create a `BioDataBunch` suitable for training an RNN classifier. This is the same as TextClasDataBunch but inherits from BioDataBunch."
     @classmethod
-    def from_df(cls, path:PathOrStr, train_df:DataFrame, valid_df:DataFrame, test_df:Optional[DataFrame]=None,
-                tokenizer:Tokenizer=None, vocab:Vocab=None, classes:Collection[str]=None, 
-                text_cols:IntsOrStrs=1,label_cols:IntsOrStrs=0, 
-                label_delim:str=None, chunksize:int=10000, max_vocab:int=60000,
-                min_freq:int=2, mark_fields:bool=False, include_bos:bool=True, include_eos:bool=False,
-                seed:int=None, **kwargs) -> DataBunch:
+    def create(cls, train_ds, valid_ds, test_ds=None, path:PathOrStr='.', bs:int=32, val_bs:int=None, pad_idx=1,
+               pad_first=True, device:torch.device=None, no_check:bool=False, backwards:bool=False, 
+               dl_tfms:Optional[Collection[Callable]]=None, **dl_kwargs) -> DataBunch:
+        "Function that transform the `datasets` in a `DataBunch` for classification. Passes `**dl_kwargs` on to `DataLoader()`"
+        datasets = cls._init_ds(train_ds, valid_ds, test_ds)
+        val_bs = ifnone(val_bs, bs)
+        collate_fn = partial(pad_collate, pad_idx=pad_idx, pad_first=pad_first, backwards=backwards)
+        train_sampler = SortishSampler(datasets[0].x, key=lambda t: len(datasets[0][t][0].data), bs=bs)
+        train_dl = DataLoader(datasets[0], batch_size=bs, sampler=train_sampler, drop_last=True, **dl_kwargs)
+        dataloaders = [train_dl]
+        for ds in datasets[1:]:
+            lengths = [len(t) for t in ds.x.items]
+            sampler = SortSampler(ds.x, key=lengths.__getitem__)
+            dataloaders.append(DataLoader(ds, batch_size=val_bs, sampler=sampler, **dl_kwargs))
+        return cls(*dataloaders, path=path, device=device, dl_tfms=dl_tfms, collate_fn=collate_fn, no_check=no_check)
 
-        path = Path(path).absolute()
-        processor = get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
-                                   min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
-        
-        if classes is None and is_listy(label_cols) and len(label_cols) > 1: classes = label_cols
-        src = ItemLists(path, TextList.from_df(train_df, path, cols=text_cols, processor=processor),
-                        TextList.from_df(valid_df, path, cols=text_cols, processor=processor))
-        if cls==TextLMDataBunch: src = src.label_for_lm()
-        else: 
-            if label_delim is not None: src = src.label_from_df(cols=label_cols, classes=classes, label_delim=label_delim)
-            else: src = src.label_from_df(cols=label_cols, classes=classes)
-        if test_df is not None: src.add_test(TextList.from_df(test_df, path, cols=text_cols))
-
-        return src.databunch(**kwargs)
+class BioLMTextList(BioTextList):
+    "Special `BioTextList` for a language model."
+    _bunch = BioLMDataBunch
+    _is_lm = True
