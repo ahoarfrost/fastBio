@@ -216,7 +216,7 @@ class BioLMDataBunch(TextLMDataBunch):
     @classmethod
     def from_seqfile(cls, path:PathOrStr, filename:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, max_seqs_per_file:int=None,
                         valid_pct:float=0.2, skiprows:int=0,
-                        bptt=70, bs=64, seed:int=None, collate_fn:Callable=data_collate, device:torch.device=None, no_check:bool=False, backwards:bool=False,
+                        seed:int=None, 
                         vocab:BioVocab=None, tokenizer:BioTokenizer=None, 
                         chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None,
                         **kwargs:Any) -> DataBunch:
@@ -236,12 +236,12 @@ class BioLMDataBunch(TextLMDataBunch):
     def from_folder(cls, path:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, ksize:int=None, 
                     max_seqs_per_file:int=None, val_maxseqs:int=None, skiprows:int=0, val_skiprows:int=0,
                     valid_pct:float=0.2, train:str=None, valid:str=None, test:Optional[str]=None,
-                    tokenizer:BioTokenizer=None, vocab:BioVocab=None, collate_fn:Callable=data_collate, device:torch.device=None, no_check:bool=False, backwards:bool=False,
+                    tokenizer:BioTokenizer=None, vocab:BioVocab=None,
                     chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None, 
-                    bptt=100, bs=64, seed:int=None, **kwargs) -> DataBunch:
+                    seed:int=None, **kwargs) -> DataBunch:
 
         path = Path(path).absolute() 
-         
+        
         if train and valid:
             processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file, ksize=ksize, skiprows=skiprows)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
                                    min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
@@ -270,11 +270,10 @@ class BioClasDataBunch(TextClasDataBunch):
                     ksize:int=None,
                     valid_pct:float=0.2, train:str=None, valid:str=None, test:Optional[str]=None,
                     label_from_fname:bool=False, label_from_header:bool=False, header_label_func:Callable=None,
-                    classes:Collection[str]=None, pad_idx:int=1, pad_first:bool=True, 
-                    device:torch.device=None, backwards:bool=False, no_check:bool=False,
+                    classes:Collection[str]=None, 
                     tokenizer:BioTokenizer=None, vocab:BioVocab=None, 
                     chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None, 
-                    bs:int=64, val_bs:int=None, seed:int=None, **kwargs) -> DataBunch:
+                    seed:int=None, **kwargs) -> DataBunch:
 
         path = Path(path).absolute()
 
@@ -310,11 +309,10 @@ class BioClasDataBunch(TextClasDataBunch):
                     max_seqs_per_file:int=None, valid_max_seqs:int=None, skiprows:int=0,
                     delimiter:str=None, header='infer', text_cols:IntsOrStrs=1, label_cols:IntsOrStrs=0, label_delim:str=None,
                     valid_pct:float=0.2, train:str=None, valid:str=None, test:Optional[str]=None,
-                    classes:Collection[str]=None, pad_idx:int=1, pad_first:bool=True, 
-                    device:torch.device=None, backwards:bool=False, no_check:bool=False,
+                    classes:Collection[str]=None, 
                     tokenizer:BioTokenizer=None, vocab:BioVocab=None, 
                     chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None, 
-                    bs=64, val_bs:int=None, seed:int=None, **kwargs) -> DataBunch:
+                    seed:int=None, **kwargs) -> DataBunch:
 
         path = Path(path).absolute()
 
@@ -365,11 +363,10 @@ class BioClasDataBunch(TextClasDataBunch):
     @classmethod
     def from_seqfile(cls, path:PathOrStr, extensions:Collection[str]=supported_seqfiletypes, recurse:bool=True, max_seqs_per_file:int=None,
                     valid_pct:float=0.2, label_func:Callable=None,
-                    classes:Collection[str]=None, pad_idx:int=1, pad_first:bool=True, backwards:bool=False,
-                    device:torch.device=None, no_check:bool=False,
+                    classes:Collection[str]=None, 
                     tokenizer:BioTokenizer=None, vocab:BioVocab=None, 
                     chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None, 
-                    bs=64, val_bs:int=None, seed:int=None, **kwargs) -> DataBunch:
+                    seed:int=None, **kwargs) -> DataBunch:
 
         "Create from a sequence file."
         path = Path(path).absolute()
@@ -389,10 +386,9 @@ class BioClasDataBunch(TextClasDataBunch):
     def from_df(cls, path:PathOrStr, train_df:DataFrame, valid_df:DataFrame, test_df:Optional[DataFrame]=None,
                 tokenizer:Tokenizer=None, vocab:Vocab=None, classes:Collection[str]=None, 
                 text_cols:IntsOrStrs=1,label_cols:IntsOrStrs=0, 
-                pad_idx:int=1, pad_first:bool=True, backwards:bool=False,
                 label_delim:str=None, chunksize:int=10000, max_vocab:int=60000,
-                min_freq:int=2, mark_fields:bool=False, include_bos:bool=True, include_eos:bool=False, device:torch.device=None, no_check:bool=False,
-                bs=64, val_bs:int=None, seed:int=None, **kwargs) -> DataBunch:
+                min_freq:int=2, mark_fields:bool=False, include_bos:bool=True, include_eos:bool=False,
+                seed:int=None, **kwargs) -> DataBunch:
 
         path = Path(path).absolute()
         processor = get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
