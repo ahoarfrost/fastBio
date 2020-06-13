@@ -61,7 +61,7 @@ def get_items_from_seqfile(filename:PathOrStr, extensions:Collection[str]=suppor
         for title, seq, qual, offset in iterator(handle):
             #get (filename, offset, length of sequence) for each read and add to items
             row += 1
-            if len(seq)>=ksize and row>=skiprows:
+            if len(seq)>=ksize and row>skiprows:
                 items.append(seq)
             if max_seqs and (row-skiprows)>=max_seqs: 
                 break
@@ -247,7 +247,7 @@ class BioDataBunch(TextDataBunch):
         return src.databunch(**kwargs)
 
     @classmethod
-    def from_seqfile(cls, path:PathOrStr, filename:PathOrStr, extensions:Collection[str]=supported_seqfiletypes,
+    def from_seqfile(cls, path:PathOrStr, filename:PathOrStr, test_filename:PathOrStr, extensions:Collection[str]=supported_seqfiletypes,
                     max_seqs_per_file:int=None,skiprows:int=0,valid_pct:float=0.2, seed:int=None, 
                     vocab:BioVocab=None, tokenizer:BioTokenizer=None,
                     chunksize:int=10000, max_vocab:int=60000, min_freq:int=2, include_bos:bool=None, include_eos:bool=None,
@@ -260,7 +260,7 @@ class BioDataBunch(TextDataBunch):
         src = src.split_by_rand_pct(valid_pct=valid_pct, seed=seed)
         src = src.label_for_lm() if cls==BioLMDataBunch else src.label_from_func(label_func, **kwargs)
 
-        if test is not None: src.add_test_folder(path/test)
+        if test is not None: src.add_test(BioTextList.from_seqfile(test_filename, path))
 
         return src.databunch(**kwargs)
 
