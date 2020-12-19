@@ -128,6 +128,13 @@ class BioTextList(TextList):
         self.__class__ = BioLMTextList
         kwargs['label_cls'] = LMLabelList
         return self.label_const(0, **kwargs)
+
+    def label_for_df_for_regression(self, cols:IntsOrStrs=1, label_cls:Callable=FloatList, **kwargs):
+        "Label `self.items` from the values in `cols` in `self.inner_df`."
+        labels = self.inner_df.iloc[:,df_names_to_idx(cols, self.inner_df)]
+        assert labels.isna().sum().sum() == 0, f"You have NaN values in column(s) {cols} of your dataframe, please fix it."
+        return self._label_from_list(labels, label_cls=label_cls, **kwargs)
+   
        
     @classmethod
     def from_seqfile(cls, filename:PathOrStr, path:PathOrStr='.', extensions:Collection[str]=supported_seqfiletypes, max_seqs_per_file:int=None, skiprows:int=0, ksize:int=None, **kwargs)->'TextList':
@@ -233,8 +240,8 @@ class BioDataBunch(TextDataBunch):
             v_processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=val_maxseqs, ksize=ksize, skiprows=val_skiprows)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
                                    min_freq=min_freq, include_bos=include_bos, include_eos=include_eos)
             
-            src = BioItemLists(path, BioTextList.from_folder(path=Path(path)/Path(train).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=processor),
-                        BioTextList.from_folder(path=Path(path)/Path(valid).resolve(), vocab=vocab, extensions=extensions, max_seqs_per_file=val_maxseqs, skiprows=val_skiprows, recurse=recurse, processor=v_processor))
+            src = BioItemLists(path, BioTextList.from_folder(path=Path(path)/Path(train), vocab=vocab, extensions=extensions, max_seqs_per_file=max_seqs_per_file, skiprows=skiprows, recurse=recurse, processor=processor),
+                        BioTextList.from_folder(path=Path(path)/Path(valid), vocab=vocab, extensions=extensions, max_seqs_per_file=val_maxseqs, skiprows=val_skiprows, recurse=recurse, processor=v_processor))
 
         else:
             processor = [OpenSeqFileProcessor(extensions=extensions, max_seqs=max_seqs_per_file, ksize=ksize)] + get_lol_processor(tokenizer=tokenizer, vocab=vocab, chunksize=chunksize, max_vocab=max_vocab,
