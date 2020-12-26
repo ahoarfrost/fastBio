@@ -6,4 +6,4 @@ A number of pretrained models for biological sequencing data are available at th
 
 If you find fastBio useful, please cite the preprint:
 
-Hoarfrost, A., et al. Shedding Light on Microbial Dark Matter with A Universal Language of Life. bioRxiv (2020). doi:10.1101/2020.12.23.424215. https://www.biorxiv.org/content/10.1101/2020.12.23.424215v1
+Hoarfrost, A., Aptekmann, A., Farfanuk, G. & Bromberg, Y. Shedding Light on Microbial Dark Matter with A Universal Language of Life. **bioRxiv** (2020). doi:10.1101/2020.12.23.424215. https://www.biorxiv.org/content/10.1101/2020.12.23.424215v1
