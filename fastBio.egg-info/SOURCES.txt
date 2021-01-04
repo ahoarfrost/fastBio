@@ -10,4 +10,5 @@ fastBio/transform.py
 fastBio.egg-info/PKG-INFO
 fastBio.egg-info/SOURCES.txt
 fastBio.egg-info/dependency_links.txt
+fastBio.egg-info/requires.txt
 fastBio.egg-info/top_level.txt

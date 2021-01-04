@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: fastBio
-Version: 0.1
+Version: 0.1.1
 Summary: Deep learning for biological sequences with fastai
 Home-page: https://github.com/ahoarfrost/fastBio
 Author: Adrienne Hoarfrost
@@ -12,7 +12,9 @@ Description: # Welcome to fastBio
         
         A number of pretrained models for biological sequencing data are available at the sister repository LookingGlass: https://github.com/ahoarfrost/LookingGlass
         
-        If you find fastBio useful, please cite the paper:
+        If you find fastBio useful, please cite the preprint:
+        
+        Hoarfrost, A., Aptekmann, A., Farfanuk, G. & Bromberg, Y. Shedding Light on Microbial Dark Matter with A Universal Language of Life. *bioRxiv* (2020). doi:10.1101/2020.12.23.424215. https://www.biorxiv.org/content/10.1101/2020.12.23.424215v1
 Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License
