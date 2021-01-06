@@ -4,7 +4,7 @@ from fastai import *
 from fastai.text import *
 import itertools
 
-supported_languages = {'dna':['A','C','G','T']}
+supported_languages = {'dna':['A','C','G','T'], 'rna':['A','C','G','U']}
 
 UNK, PAD, BOS, EOS = 'xxunk', 'xxpad', 'xxbos', 'xxeos'
 defaults.special_tokens = [UNK, PAD, BOS, EOS]
@@ -106,6 +106,9 @@ class BioVocab(Vocab):
     def create_from_ksize(cls, ksize:int=1, alphabet:Collection[str]=supported_languages['dna'], special_tokens=defaults.special_tokens):
         '''
         Create a vocabulary of all possible permutations of kmers of a given kmer size. 
+        ksize = number of nucleotides in each token permutation
+        alphabet = list of possible nucleotides/letters (by default uses DNA)
+        special_tokens = list of special tokens to use
         In DNA, this remains practical up until a ksize of about 8 (4**8=65536).
         '''
         itos = kmer_permutations(ksize=ksize, alphabet=alphabet)

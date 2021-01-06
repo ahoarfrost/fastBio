@@ -157,6 +157,7 @@ class BioTextList(TextList):
 
     def label_from_fname(self, label_cls:Callable=None, max_seqs_per_file:int=None, extensions:Collection[str]=supported_seqfiletypes, **kwargs) -> 'LabelList':
         #give label to each filename depending on the filename
+        #items need to be a list of filenames, as imported from from_folder (not from_seqfile) 
         labels = []
         for o in self.items:
             #extract label from filename
