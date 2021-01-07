@@ -1,0 +1,480 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome to fastBio’s documentation! &#8212; fastBio 0.1.2 documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="welcome-to-fastbio-s-documentation">
+<h1><a class="toc-backref" href="#id2">Welcome to fastBio’s documentation!</a><a class="headerlink" href="#welcome-to-fastbio-s-documentation" title="Permalink to this headline">¶</a></h1>
+<p>fastBio is a library for manipulating data and creating and training deep learning models for biological sequencing data. It is an extension of the fastai v1 library.</p>
+<p>A number of pretrained models for biological sequencing data can be loaded directly through fastBio with the <strong>LookingGlass</strong> and <strong>LookingGlassClassifier</strong> classes.
+These models are available for download at the sister repository <a class="reference external" href="https://github.com/ahoarfrost/LookingGlass">LookingGlass</a>.</p>
+<p>If you find fastBio or LookingGlass useful, please cite the preprint:</p>
+<blockquote>
+<div><p>Hoarfrost, A., Aptekmann, A., Farfanuk, G. &amp; Bromberg, Y. Shedding Light on Microbial Dark Matter with A Universal Language of Life. <em>bioRxiv</em> (2020). doi:10.1101/2020.12.23.424215. https://www.biorxiv.org/content/10.1101/2020.12.23.424215v2</p>
+</div></blockquote>
+<div class="toctree-wrapper compound">
+</div>
+<div class="contents topic" id="table-of-contents">
+<p class="topic-title">Table of Contents</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#welcome-to-fastbio-s-documentation" id="id2">Welcome to fastBio’s documentation!</a></p></li>
+<li><p><a class="reference internal" href="#installation" id="id3">Installation</a></p></li>
+<li><p><a class="reference internal" href="#tutorial" id="id4">Tutorial</a></p></li>
+<li><p><a class="reference internal" href="#api-docs" id="id5">API Docs</a></p>
+<ul>
+<li><p><a class="reference internal" href="#transforms" id="id6">Transforms</a></p>
+<ul>
+<li><p><a class="reference internal" href="#biotokenizer" id="id7">BioTokenizer</a></p></li>
+<li><p><a class="reference internal" href="#biovocab" id="id8">BioVocab</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#databunching" id="id9">Databunching</a></p>
+<ul>
+<li><p><a class="reference internal" href="#biodatabunch" id="id10">BioDataBunch</a></p></li>
+<li><p><a class="reference internal" href="#biolmdatabunch" id="id11">BioLMDataBunch</a></p></li>
+<li><p><a class="reference internal" href="#bioclasdatabunch" id="id12">BioClasDataBunch</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#models" id="id13">Models</a></p>
+<ul>
+<li><p><a class="reference internal" href="#id1" id="id14">LookingGlass</a></p></li>
+<li><p><a class="reference internal" href="#lookingglassclassifier" id="id15">LookingGlassClassifier</a></p></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#indices-and-tables" id="id16">Indices and tables</a></p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="installation">
+<h1><a class="toc-backref" href="#id3">Installation</a><a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<p>You can install fastBio with pip (python 3 only):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip3</span> <span class="n">install</span> <span class="n">fastBio</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="tutorial">
+<h1><a class="toc-backref" href="#id4">Tutorial</a><a class="headerlink" href="#tutorial" title="Permalink to this headline">¶</a></h1>
+<p>See the fastBio tutorial in <a class="reference external" href="https://github.com/ahoarfrost/fastBio/blob/master/Tutorial.html">html</a> or <a class="reference external" href="https://github.com/ahoarfrost/fastBio/blob/master/Tutorial.ipynb">jupyter notebook</a> form.</p>
+</div>
+<div class="section" id="api-docs">
+<h1><a class="toc-backref" href="#id5">API Docs</a><a class="headerlink" href="#api-docs" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="transforms">
+<h2><a class="toc-backref" href="#id6">Transforms</a><a class="headerlink" href="#transforms" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="biotokenizer">
+<h3><a class="toc-backref" href="#id7">BioTokenizer</a><a class="headerlink" href="#biotokenizer" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><dl class="py class">
+<dt id="transform.BioTokenizer">
+<em class="property">class </em><code class="sig-prename descclassname">transform.</code><code class="sig-name descname">BioTokenizer</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ksize</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">stride</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">special_cases</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Collection<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">n_cpus</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">include_bos</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">include_eos</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#transform.BioTokenizer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tokenize biological sequences (with multiprocessing).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ksize</strong> – An int indicating the kmer size with which to split a sequence into tokens. Default 1.</p></li>
+<li><p><strong>stride</strong> – An int indicating number of nucleotides to skip before beginning next token. Default 1.</p></li>
+<li><p><strong>special_cases</strong> – A collection of special tokens to use. Default includes tokens for ‘unknown’, ‘pad’, ‘beginning of sequence’, and ‘end of sequence’.</p></li>
+<li><p><strong>n_cpus</strong> – An int indicating number of CPUs to use for tokenization. Default to number of CPUs available (fastai default).</p></li>
+<li><p><strong>include_bos</strong> – A boolean indicating whether to include ‘beginning of sequence’ special token when tokenizing sequences. Default True.</p></li>
+<li><p><strong>include_eos</strong> – A boolean indicating whether to include ‘end of sequence’ special token when tokenizing sequences. Default False.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="transform.BioTokenizer.process_all">
+<code class="sig-name descname">process_all</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">seqs</span><span class="p">:</span> <span class="n">Collection<span class="p">[</span>str<span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; List<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span><a class="headerlink" href="#transform.BioTokenizer.process_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a list of <cite>seqs</cite> with multiprocessing.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="transform.BioTokenizer.process_one">
+<code class="sig-name descname">process_one</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">s</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span> &#x2192; List<span class="p">[</span>str<span class="p">]</span><a class="headerlink" href="#transform.BioTokenizer.process_one" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process one sequence <cite>s</cite> with tokenizer <cite>tok</cite>.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div></blockquote>
+</div>
+<div class="section" id="biovocab">
+<h3><a class="toc-backref" href="#id8">BioVocab</a><a class="headerlink" href="#biovocab" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><dl class="py class">
+<dt id="transform.BioVocab">
+<em class="property">class </em><code class="sig-prename descclassname">transform.</code><code class="sig-name descname">BioVocab</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">itos</span><span class="p">:</span> <span class="n">Collection<span class="p">[</span>str<span class="p">]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#transform.BioVocab" title="Permalink to this definition">¶</a></dt>
+<dd><p>Contain the correspondence between numbers and tokens and numericalize.</p>
+<dl class="py method">
+<dt id="transform.BioVocab.create">
+<em class="property">classmethod </em><code class="sig-name descname">create</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">tokens</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Collection<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">special_tokens</span><span class="o">=</span><span class="default_value">['xxunk', 'xxpad', 'xxbos', 'xxeos']</span></em>, <em class="sig-param"><span class="n">max_vocab</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">65536</span></em>, <em class="sig-param"><span class="n">min_freq</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">100</span></em><span class="sig-paren">)</span> &#x2192; fastai.text.transform.Vocab<a class="headerlink" href="#transform.BioVocab.create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a vocabulary from a set of <cite>tokens</cite> based on a maximum vocabulary size and minimum frequency of the occurrence of the token.
+Defaults will fit 4**8 tokens (so e.g. all permutations of ksize=8), with a minimum frequency of 100.
+see e.g. Chor et al. 2009 (doi: 10.1186/gb-2009-10-10-r108) for kmer frequency distribs for diff k sizes that make sense</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tokens</strong> – A collection of tokens from which to create a vocabulary. Default None.</p></li>
+<li><p><strong>special_tokens</strong> – A collection of special tokens to use. Default includes tokens for ‘unknown’, ‘pad’, ‘beginning of sequence’, and ‘end of sequence’.</p></li>
+<li><p><strong>max_vocab</strong> – An int indicating maximum number of vocabulary items to include (most frequent tokens up to this number will be included). Default 4**8.</p></li>
+<li><p><strong>min_freq</strong> – An int indicating the minimum frequency of a token in order to be included in the vocabulary. Default 100.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="transform.BioVocab.create_from_ksize">
+<em class="property">classmethod </em><code class="sig-name descname">create_from_ksize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ksize</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">alphabet</span><span class="p">:</span> <span class="n">Collection<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">['A', 'C', 'G', 'T']</span></em>, <em class="sig-param"><span class="n">special_tokens</span><span class="o">=</span><span class="default_value">['xxunk', 'xxpad', 'xxbos', 'xxeos']</span></em><span class="sig-paren">)</span><a class="headerlink" href="#transform.BioVocab.create_from_ksize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a vocabulary of all possible permutations of kmers of a given kmer size. In DNA, this remains practical up until a ksize of about 8 (4**8=65536).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ksize</strong> – An int indicating the kmer size from which to generate vocabulary items. Default 1.</p></li>
+<li><p><strong>alphabet</strong> – A collection of the possible letters in your alphabet. Default is [‘A’,’C’,’G’,’T’] (e.g. for DNA).</p></li>
+<li><p><strong>special_tokens</strong> – A collection of special tokens to use. Default includes tokens for ‘unknown’, ‘pad’, ‘beginning of sequence’, and ‘end of sequence’.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="databunching">
+<h2><a class="toc-backref" href="#id9">Databunching</a><a class="headerlink" href="#databunching" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="biodatabunch">
+<h3><a class="toc-backref" href="#id10">BioDataBunch</a><a class="headerlink" href="#biodatabunch" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><dl class="py class">
+<dt id="data.BioDataBunch">
+<em class="property">class </em><code class="sig-prename descclassname">data.</code><code class="sig-name descname">BioDataBunch</code><span class="sig-paren">(</span><em class="sig-param">train_dl: torch.utils.data.dataloader.DataLoader</em>, <em class="sig-param">valid_dl: torch.utils.data.dataloader.DataLoader</em>, <em class="sig-param">fix_dl: Optional[torch.utils.data.dataloader.DataLoader] = None</em>, <em class="sig-param">test_dl: Optional[torch.utils.data.dataloader.DataLoader] = None</em>, <em class="sig-param">device: Optional[torch.device] = None</em>, <em class="sig-param">dl_tfms: Optional[Collection[Callable]] = None</em>, <em class="sig-param">path: Union[pathlib.Path</em>, <em class="sig-param">str] = '.'</em>, <em class="sig-param">collate_fn: Callable = &lt;function data_collate&gt;</em>, <em class="sig-param">no_check: bool = False</em><span class="sig-paren">)</span><a class="headerlink" href="#data.BioDataBunch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a databunch from biological sequencing data.</p>
+<dl class="py method">
+<dt id="data.BioDataBunch.from_df">
+<em class="property">classmethod </em><code class="sig-name descname">from_df</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>pathlib.Path<span class="p">, </span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">train_df</span><span class="p">:</span> <span class="n">pandas.core.frame.DataFrame</span></em>, <em class="sig-param"><span class="n">valid_df</span><span class="p">:</span> <span class="n">pandas.core.frame.DataFrame</span></em>, <em class="sig-param"><span class="n">test_df</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>pandas.core.frame.DataFrame<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">tokenizer</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>fastai.text.transform.Tokenizer<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">vocab</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>fastai.text.transform.Vocab<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">classes</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Collection<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">text_cols</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>int<span class="p">, </span>Collection<span class="p">[</span>int<span class="p">]</span><span class="p">, </span>str<span class="p">, </span>Collection<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">label_cols</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>int<span class="p">, </span>Collection<span class="p">[</span>int<span class="p">]</span><span class="p">, </span>str<span class="p">, </span>Collection<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">0</span></em>, <em class="sig-param"><span class="n">label_delim</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">chunksize</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">10000</span></em>, <em class="sig-param"><span class="n">max_vocab</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">60000</span></em>, <em class="sig-param"><span class="n">min_freq</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">2</span></em>, <em class="sig-param"><span class="n">include_bos</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">include_eos</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span> &#x2192; fastai.basic_data.DataBunch<a class="headerlink" href="#data.BioDataBunch.from_df" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a <cite>BioDataBunch</cite> from dataframes. Recommended for classifiers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> – A string or pathlib Path indicating root directory to use in databunch.</p></li>
+<li><p><strong>train_df</strong> – A dataframe containing the training data.</p></li>
+<li><p><strong>valid_df</strong> – A dataframe containing the validation data.</p></li>
+<li><p><strong>test_df</strong> – An optional dataframe containing the test data.</p></li>
+<li><p><strong>tokenizer</strong> – A BioTokenizer or Tokenizer to use for tokenization. Default None.</p></li>
+<li><p><strong>vocab</strong> – A BioVocab or Vocab to use for numericalization. Default None.</p></li>
+<li><p><strong>classes</strong> – A collection indicating class labels to use. Default None (will be inferred).</p></li>
+<li><p><strong>text_cols</strong> – An int or string indicating from which column (by index or name) to derive sequence data. Default 1.</p></li>
+<li><p><strong>label_cols</strong> – An int or string indicating from which column (by index or name) to derive label. Default 0.</p></li>
+<li><p><strong>label_delim</strong> – A string indicating label delimiter, if any. Default None.</p></li>
+<li><p><strong>chunksize</strong> – An int indicating chunksize to use. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default 10000.</p></li>
+<li><p><strong>max_vocab</strong> – An int indicating maximum vocab items to include. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default 60000.</p></li>
+<li><p><strong>min_freq</strong> – An int indicating minimum occurrence of each token to be included in vocab. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default 2.</p></li>
+<li><p><strong>include_bos</strong> – A boolean indicating whether to include ‘beginning of sequence’ special token. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default True.</p></li>
+<li><p><strong>include_eos</strong> – A boolean indicating whether to include ‘end of sequence’ special token. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default False.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="data.BioDataBunch.from_folder">
+<em class="property">classmethod </em><code class="sig-name descname">from_folder</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>pathlib.Path<span class="p">, </span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">train</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'train'</span></em>, <em class="sig-param"><span class="n">valid</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'valid'</span></em>, <em class="sig-param"><span class="n">test</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">valid_pct</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.2</span></em>, <em class="sig-param"><span class="n">extensions</span><span class="p">:</span> <span class="n">Collection<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">['.fastq', '.fna', '.fasta', '.ffn', '.faa']</span></em>, <em class="sig-param"><span class="n">recurse</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">ksize</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">max_seqs_per_file</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">val_maxseqs</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">skiprows</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">0</span></em>, <em class="sig-param"><span class="n">val_skiprows</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">0</span></em>, <em class="sig-param"><span class="n">classes</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Collection<span class="p">[</span>Any<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">tokenizer</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>fastai.text.transform.Tokenizer<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">vocab</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>fastai.text.transform.Vocab<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">chunksize</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">10000</span></em>, <em class="sig-param"><span class="n">max_vocab</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">60000</span></em>, <em class="sig-param"><span class="n">min_freq</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">2</span></em>, <em class="sig-param"><span class="n">include_bos</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">include_eos</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">seed</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#data.BioDataBunch.from_folder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a <cite>BioDataBunch</cite> from fasta/sequence files in folders.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> – A string or pathlib Path indicating root directory to use in databunch.</p></li>
+<li><p><strong>train</strong> – A string indicating folder containing training data. Default ‘train’.</p></li>
+<li><p><strong>valid</strong> – A string indicating folder containing validation data. Default ‘valid’.</p></li>
+<li><p><strong>test</strong> – An optional string indicating folder containing test data. Default None.</p></li>
+<li><p><strong>valid_pct</strong> – A float indicating percentage of sequences to be split into validation set (if no ‘train’ and ‘valid’ paths provided).</p></li>
+<li><p><strong>extensions</strong> – A collection of supported sequence file types. Currently, these are: [‘.fastq’, ‘.fna’, ‘.fasta’, ‘.ffn’, ‘.faa’]</p></li>
+<li><p><strong>recurse</strong> – A boolean indicating whether to recurse through subdirectories in ‘path’. Default True.</p></li>
+<li><p><strong>ksize</strong> – An int indicating kmer size to use in tokenization. Default None.</p></li>
+<li><p><strong>max_seqs_per_file</strong> – An int indicating maximum number of sequences from each sequence file in training set to include in databunch. Default None (all sequences used).</p></li>
+<li><p><strong>val_maxseqs</strong> – An int indicating maximum number of sequences from each sequence file in validation set to include in databunch. Default None (all sequences used).</p></li>
+<li><p><strong>skiprows</strong> – An int indicating number of sequences in each file in training set to skip before reading into databunch. Default 0.</p></li>
+<li><p><strong>val_skiprows</strong> – An int indicating number of sequences in each file in validation set to skip before reading into databunch. Default 0.</p></li>
+<li><p><strong>classes</strong> – A collection indicating class labels to use. Default None (will be inferred).</p></li>
+<li><p><strong>tokenizer</strong> – A BioTokenizer or Tokenizer to use for tokenization. Default None.</p></li>
+<li><p><strong>vocab</strong> – A BioVocab or Vocab to use for numericalization. Default None.</p></li>
+<li><p><strong>chunksize</strong> – An int indicating chunksize to use. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default 10000.</p></li>
+<li><p><strong>max_vocab</strong> – An int indicating maximum vocab items to include. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default 60000.</p></li>
+<li><p><strong>min_freq</strong> – An int indicating minimum occurrence of each token to be included in vocab. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default 2.</p></li>
+<li><p><strong>include_bos</strong> – A boolean indicating whether to include ‘beginning of sequence’ special token. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default True.</p></li>
+<li><p><strong>include_eos</strong> – A boolean indicating whether to include ‘end of sequence’ special token. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default False.</p></li>
+<li><p><strong>seed</strong> – Seed to use when splitting data by valid_pct. Default None.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="data.BioDataBunch.from_multiple_csv">
+<em class="property">classmethod </em><code class="sig-name descname">from_multiple_csv</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>pathlib.Path<span class="p">, </span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">train</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">valid</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">test</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">valid_pct</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.2</span></em>, <em class="sig-param"><span class="n">text_cols</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>int<span class="p">, </span>Collection<span class="p">[</span>int<span class="p">]</span><span class="p">, </span>str<span class="p">, </span>Collection<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">label_cols</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>int<span class="p">, </span>Collection<span class="p">[</span>int<span class="p">]</span><span class="p">, </span>str<span class="p">, </span>Collection<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">0</span></em>, <em class="sig-param"><span class="n">max_seqs_per_file</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">valid_max_seqs</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">skiprows</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">0</span></em>, <em class="sig-param"><span class="n">val_skiprows</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">0</span></em>, <em class="sig-param"><span class="n">delimiter</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">header</span><span class="o">=</span><span class="default_value">'infer'</span></em>, <em class="sig-param"><span class="n">label_delim</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">extensions</span><span class="p">:</span> <span class="n">Collection<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">['.csv']</span></em>, <em class="sig-param"><span class="n">recurse</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">classes</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Collection<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">tokenizer</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span><a class="reference internal" href="#transform.BioTokenizer" title="transform.BioTokenizer">transform.BioTokenizer</a><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">vocab</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span><a class="reference internal" href="#transform.BioVocab" title="transform.BioVocab">transform.BioVocab</a><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">chunksize</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">10000</span></em>, <em class="sig-param"><span class="n">max_vocab</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">60000</span></em>, <em class="sig-param"><span class="n">min_freq</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">2</span></em>, <em class="sig-param"><span class="n">include_bos</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>bool<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">include_eos</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>bool<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">seed</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span> &#x2192; fastai.basic_data.DataBunch<a class="headerlink" href="#data.BioDataBunch.from_multiple_csv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a <cite>BioDataBunch</cite> from multiple csv files. Recommended for classifiers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> – A string or pathlib Path indicating root directory to use in databunch.</p></li>
+<li><p><strong>train</strong> – A string indicating folder containing training data. Default ‘train’.</p></li>
+<li><p><strong>valid</strong> – A string indicating folder containing validation data. Default ‘valid’.</p></li>
+<li><p><strong>test</strong> – An optional string indicating folder containing test data. Default None.</p></li>
+<li><p><strong>valid_pct</strong> – A float indicating percentage of sequences to be split into validation set (if no ‘train’ and ‘valid’ paths provided).</p></li>
+<li><p><strong>text_cols</strong> – An int or string indicating from which column (by index or name) to derive sequence data. Default 1.</p></li>
+<li><p><strong>label_cols</strong> – An int or string indicating from which column (by index or name) to derive label. Default 0.</p></li>
+<li><p><strong>max_seqs_per_file</strong> – An int indicating maximum number of sequences from each sequence file in training set to include in databunch. Default None (all sequences used).</p></li>
+<li><p><strong>valid_max_seqs</strong> – An int indicating maximum number of sequences from each sequence file in validation set to include in databunch. Default None (all sequences used).</p></li>
+<li><p><strong>skiprows</strong> – An int indicating number of sequences in each file in training set to skip before reading into databunch. Default 0.</p></li>
+<li><p><strong>val_skiprows</strong> – An int indicating number of sequences in each file in validation set to skip before reading into databunch. Default 0.</p></li>
+<li><p><strong>delimiter</strong> – A string indicating csv file delimiter to pass to pandas read_csv. Default None (will infer).</p></li>
+<li><p><strong>header</strong> – Index of header of csv to pass to pandas read_csv. Default ‘infer’.</p></li>
+<li><p><strong>label_delim</strong> – A string indicating label delimiter, if any. Default None.</p></li>
+<li><p><strong>extensions</strong> – A collection of supported file types. Default [‘.csv’].</p></li>
+<li><p><strong>recurse</strong> – A boolean indicating whether to recurse through subdirectories in ‘path’. Default True.</p></li>
+<li><p><strong>classes</strong> – A collection indicating class labels to use. Default None (will be inferred).</p></li>
+<li><p><strong>tokenizer</strong> – A BioTokenizer or Tokenizer to use for tokenization. Default None.</p></li>
+<li><p><strong>vocab</strong> – A BioVocab or Vocab to use for numericalization. Default None.</p></li>
+<li><p><strong>chunksize</strong> – An int indicating chunksize to use. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default 10000.</p></li>
+<li><p><strong>max_vocab</strong> – An int indicating maximum vocab items to include. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default 60000.</p></li>
+<li><p><strong>min_freq</strong> – An int indicating minimum occurrence of each token to be included in vocab. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default 2.</p></li>
+<li><p><strong>include_bos</strong> – A boolean indicating whether to include ‘beginning of sequence’ special token. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default True.</p></li>
+<li><p><strong>include_eos</strong> – A boolean indicating whether to include ‘end of sequence’ special token. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default False.</p></li>
+<li><p><strong>seed</strong> – Seed to use when splitting data by valid_pct. Default None.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="data.BioDataBunch.from_seqfile">
+<em class="property">classmethod </em><code class="sig-name descname">from_seqfile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>pathlib.Path<span class="p">, </span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">filename</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>pathlib.Path<span class="p">, </span>str<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">test_filename</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">extensions</span><span class="p">:</span> <span class="n">Collection<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">['.fastq', '.fna', '.fasta', '.ffn', '.faa']</span></em>, <em class="sig-param"><span class="n">max_seqs_per_file</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">skiprows</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">0</span></em>, <em class="sig-param"><span class="n">valid_pct</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.2</span></em>, <em class="sig-param"><span class="n">seed</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">vocab</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span><a class="reference internal" href="#transform.BioVocab" title="transform.BioVocab">transform.BioVocab</a><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">tokenizer</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span><a class="reference internal" href="#transform.BioTokenizer" title="transform.BioTokenizer">transform.BioTokenizer</a><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">chunksize</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">10000</span></em>, <em class="sig-param"><span class="n">max_vocab</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">60000</span></em>, <em class="sig-param"><span class="n">min_freq</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">2</span></em>, <em class="sig-param"><span class="n">include_bos</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>bool<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">include_eos</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>bool<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">label_func</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Callable<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span></em><span class="sig-paren">)</span><a class="headerlink" href="#data.BioDataBunch.from_seqfile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a <cite>BioDataBunch</cite> from a single sequence file. Not recommended for classifiers - you need to provide a fairly complicated labeling function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> – A string or pathlib Path indicating root directory to use in databunch.</p></li>
+<li><p><strong>filename</strong> – A string or pathlib Path indicating sequence file from which to derive items.</p></li>
+<li><p><strong>test_filename</strong> – An optional string indicating sequence file from which to derive test data. Default None.</p></li>
+<li><p><strong>extensions</strong> – A collection of supported sequence file types. Currently, these are: [‘.fastq’, ‘.fna’, ‘.fasta’, ‘.ffn’, ‘.faa’]</p></li>
+<li><p><strong>max_seqs_per_file</strong> – An int indicating maximum number of sequences to include in databunch. Default None (all sequences used).</p></li>
+<li><p><strong>skiprows</strong> – An int indicating number of sequences to skip before reading into databunch. Default 0.</p></li>
+<li><p><strong>valid_pct</strong> – A float indicating percentage of sequences to be split into validation set.</p></li>
+<li><p><strong>seed</strong> – Seed to use when splitting data by valid_pct. Default None.</p></li>
+<li><p><strong>vocab</strong> – A BioVocab or Vocab to use for numericalization. Default None.</p></li>
+<li><p><strong>tokenizer</strong> – A BioTokenizer or Tokenizer to use for tokenization. Default None.</p></li>
+<li><p><strong>chunksize</strong> – An int indicating chunksize to use. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default 10000.</p></li>
+<li><p><strong>max_vocab</strong> – An int indicating maximum vocab items to include. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default 60000.</p></li>
+<li><p><strong>min_freq</strong> – An int indicating minimum occurrence of each token to be included in vocab. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default 2.</p></li>
+<li><p><strong>include_bos</strong> – A boolean indicating whether to include ‘beginning of sequence’ special token. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default True.</p></li>
+<li><p><strong>include_eos</strong> – A boolean indicating whether to include ‘end of sequence’ special token. Will only be used to auto-generate transforms if no tokenizer or vocab provided. Default False.</p></li>
+<li><p><strong>label_func</strong> – A function that accepts a sequence item and returns the value desired to be extracted.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div></blockquote>
+</div>
+<div class="section" id="biolmdatabunch">
+<h3><a class="toc-backref" href="#id11">BioLMDataBunch</a><a class="headerlink" href="#biolmdatabunch" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><dl class="py class">
+<dt id="data.BioLMDataBunch">
+<em class="property">class </em><code class="sig-prename descclassname">data.</code><code class="sig-name descname">BioLMDataBunch</code><span class="sig-paren">(</span><em class="sig-param">train_dl: torch.utils.data.dataloader.DataLoader</em>, <em class="sig-param">valid_dl: torch.utils.data.dataloader.DataLoader</em>, <em class="sig-param">fix_dl: Optional[torch.utils.data.dataloader.DataLoader] = None</em>, <em class="sig-param">test_dl: Optional[torch.utils.data.dataloader.DataLoader] = None</em>, <em class="sig-param">device: Optional[torch.device] = None</em>, <em class="sig-param">dl_tfms: Optional[Collection[Callable]] = None</em>, <em class="sig-param">path: Union[pathlib.Path</em>, <em class="sig-param">str] = '.'</em>, <em class="sig-param">collate_fn: Callable = &lt;function data_collate&gt;</em>, <em class="sig-param">no_check: bool = False</em><span class="sig-paren">)</span><a class="headerlink" href="#data.BioLMDataBunch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a <cite>BioDataBunch</cite> suitable for training a language model. BioLMDataBunch inherits from BioDataBunch, so a BioLMDataBunch can be called using any of the BioDataBunch methods: from_folder, from_seqfile, etc.</p>
+</dd></dl>
+
+</div></blockquote>
+</div>
+<div class="section" id="bioclasdatabunch">
+<h3><a class="toc-backref" href="#id12">BioClasDataBunch</a><a class="headerlink" href="#bioclasdatabunch" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><dl class="py class">
+<dt id="data.BioClasDataBunch">
+<em class="property">class </em><code class="sig-prename descclassname">data.</code><code class="sig-name descname">BioClasDataBunch</code><span class="sig-paren">(</span><em class="sig-param">train_dl: torch.utils.data.dataloader.DataLoader</em>, <em class="sig-param">valid_dl: torch.utils.data.dataloader.DataLoader</em>, <em class="sig-param">fix_dl: Optional[torch.utils.data.dataloader.DataLoader] = None</em>, <em class="sig-param">test_dl: Optional[torch.utils.data.dataloader.DataLoader] = None</em>, <em class="sig-param">device: Optional[torch.device] = None</em>, <em class="sig-param">dl_tfms: Optional[Collection[Callable]] = None</em>, <em class="sig-param">path: Union[pathlib.Path</em>, <em class="sig-param">str] = '.'</em>, <em class="sig-param">collate_fn: Callable = &lt;function data_collate&gt;</em>, <em class="sig-param">no_check: bool = False</em><span class="sig-paren">)</span><a class="headerlink" href="#data.BioClasDataBunch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a <cite>BioDataBunch</cite> suitable for training an RNN classifier. BioClasDataBunch inherits from BioDataBunch, so a BioClasDataBunch can be called using any of the BioDataBunch methods: from_df, from_multiple_csv, etc.</p>
+</dd></dl>
+
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="models">
+<h2><a class="toc-backref" href="#id13">Models</a><a class="headerlink" href="#models" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id1">
+<h3><a class="toc-backref" href="#id14">LookingGlass</a><a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><dl class="py class">
+<dt id="models.LookingGlass">
+<em class="property">class </em><code class="sig-prename descclassname">models.</code><code class="sig-name descname">LookingGlass</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span><span class="p">:</span> <span class="n">fastai.basic_data.DataBunch</span></em><span class="sig-paren">)</span><a class="headerlink" href="#models.LookingGlass" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads the LookingGlass model architecture, optionally with pretrained LookingGlass weights.</p>
+<dl class="py method">
+<dt id="models.LookingGlass.load">
+<code class="sig-name descname">load</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pretrained</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">pretrained_dir</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Union<span class="p">[</span>pathlib.Path<span class="p">, </span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#models.LookingGlass.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a LookingGlass-like language model architecture, with pretrained LookingGlass weights if pretrained=True (true by default).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pretrained</strong> – A boolean to indicate whether LookingGlass pretrained weights should be used. Default True.</p></li>
+<li><p><strong>pretrained_dir</strong> – A string or pathlib Path indicating the directory in which to download and/or look for pretrained models. Default None. If default, current directory will be used.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div></blockquote>
+</div>
+<div class="section" id="lookingglassclassifier">
+<h3><a class="toc-backref" href="#id15">LookingGlassClassifier</a><a class="headerlink" href="#lookingglassclassifier" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><dl class="py class">
+<dt id="models.LookingGlassClassifier">
+<em class="property">class </em><code class="sig-prename descclassname">models.</code><code class="sig-name descname">LookingGlassClassifier</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span><span class="p">:</span> <span class="n">fastai.basic_data.DataBunch</span></em><span class="sig-paren">)</span><a class="headerlink" href="#models.LookingGlassClassifier" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a classifier model with the LookingGlass architecture.
+Use .load_encoder() to create a new classifier with the (optionally pretrained) LookingGlass encoder architecture.
+Use .load() to load a pretrained classifier (by name) that was fine tuned from LookingGlass.</p>
+<dl class="py method">
+<dt id="models.LookingGlassClassifier.load">
+<code class="sig-name descname">load</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pretrained_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'FunctionalClassifier'</span></em>, <em class="sig-param"><span class="n">pretrained</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">pretrained_dir</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#models.LookingGlassClassifier.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a pretrained classifier model derived via transfer learning from the LookingGlass universal biological language model.</p>
+<p>Pretrained models are described in the paper:
+Hoarfrost, A., Aptekmann, A., Farfanuk, G. &amp; Bromberg, Y. Shedding Light on Microbial Dark Matter with A Universal Language of Life. <em>bioRxiv</em> (2020). doi:10.1101/2020.12.23.424215. https://www.biorxiv.org/content/10.1101/2020.12.23.424215v2</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pretrained_name</strong> – A string indicating which pretrained encoder weights to load. Possible values are: ‘FunctionalClassifier’, ‘OxidoreductaseClassifier’, ‘OptimalTempClassifier’, or ‘ReadingFrameClassifier’.</p></li>
+<li><p><strong>pretrained</strong> – A boolean to indicate whether LookingGlass pretrained weights should be used. Default True.</p></li>
+<li><p><strong>pretrained_dir</strong> – A string or pathlib Path indicating the directory in which to download and/or look for pretrained models. Default None. If default, current directory will be used.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="models.LookingGlassClassifier.load_encoder">
+<code class="sig-name descname">load_encoder</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pretrained_name</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'LookingGlass_enc'</span></em>, <em class="sig-param"><span class="n">pretrained</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">pretrained_dir</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#models.LookingGlassClassifier.load_encoder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a LookingGlass-like classifier model architecture, with pretrained encoder weights if pretrained=True (true by default).</p>
+<p>Pretrained models are described in the paper:
+Hoarfrost, A., Aptekmann, A., Farfanuk, G. &amp; Bromberg, Y. Shedding Light on Microbial Dark Matter with A Universal Language of Life. <em>bioRxiv</em> (2020). doi:10.1101/2020.12.23.424215. https://www.biorxiv.org/content/10.1101/2020.12.23.424215v2</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pretrained_name</strong> – A string indicating which pretrained encoder weights to load. Possible values are ‘LookingGlass_enc’ (default) or ‘FunctionalClassifier_enc’.</p></li>
+<li><p><strong>pretrained</strong> – A boolean to indicate whether LookingGlass pretrained weights should be used. Default True.</p></li>
+<li><p><strong>pretrained_dir</strong> – A string or pathlib Path indicating the directory in which to download and/or look for pretrained models. Default None. If default, current directory will be used.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div></blockquote>
+</div>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1><a class="toc-backref" href="#id16">Indices and tables</a><a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">fastBio</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, Adrienne Hoarfrost.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

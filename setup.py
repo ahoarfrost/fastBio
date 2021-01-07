@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="fastBio",
-    version="0.1.1",
+    version="0.1.2",
     author="Adrienne Hoarfrost",
     author_email="adrienne.l.hoarfrost@gmail.com",
     description="Deep learning for biological sequences with fastai",

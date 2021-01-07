@@ -4,17 +4,35 @@ from fastai import *
 from fastai.text import *
 import itertools
 
-supported_languages = {'dna':['A','C','G','T']}
+supported_languages = {'dna':['A','C','G','T'], 'rna':['A','C','G','U']}
 
 UNK, PAD, BOS, EOS = 'xxunk', 'xxpad', 'xxbos', 'xxeos'
 defaults.special_tokens = [UNK, PAD, BOS, EOS]
  
 class BioTokenizer():
-    """
-    tokenize text with multiprocessing. 
+    '''
+    Tokenize biological sequences (with multiprocessing). 
     
-    Note in fastai.text there is a separate BaseTokenizer class to contain the tokenizer function and that is passed to the 'Tokenizer' class. Here, we put this in one class to make this less confusing.
-    """
+    Parameters
+    ---------
+    ksize
+        An int indicating the kmer size with which to split a sequence into tokens. Default 1.
+    
+    stride
+        An int indicating number of nucleotides to skip before beginning next token. Default 1.
+
+    special_cases
+        A collection of special tokens to use. Default includes tokens for 'unknown', 'pad', 'beginning of sequence', and 'end of sequence'. 
+    
+    n_cpus
+        An int indicating number of CPUs to use for tokenization. Default to number of CPUs available (fastai default).
+
+    include_bos
+        A boolean indicating whether to include 'beginning of sequence' special token when tokenizing sequences. Default True.
+
+    include_eos
+        A boolean indicating whether to include 'end of sequence' special token when tokenizing sequences. Default False.
+    '''
 
     def __init__(self, ksize:int=1, stride:int=1, special_cases:Collection[str]=None, n_cpus:int=None, 
                  include_bos:bool=True, include_eos:bool=False):
@@ -71,11 +89,19 @@ class BioTokenizer():
 
 def kmer_permutations(ksize, alphabet):
     '''
-    This function returns the set of all possible permutations of letters/nucleotides for a given kmer size.
-    alphabet: a list of the possible letters in your alphabet; e.g. for DNA this is ['A','C','G','T']
-    k_size: an integer, the kmer size of your resulting permutations; e.g. 6
+    Return the set of all possible permutations of letters/nucleotides for a given kmer size.
+
     The number of resulting permutations will be alphabet**k_size; e.g. for 10-mers of DNA nucleotides, there are 4^10 or 1048576 possible combinations of nucleotides.
+
+    Parameters
+    ---------
+    ksize
+        An int indicating the kmer size of the resulting permutations. with which to split a sequence into tokens. 
+
+    alphabet
+        A list of the possible letters in your alphabet; e.g. for DNA this is ['A','C','G','T']    
     '''
+
     permutations = set()
     for combo in itertools.product(alphabet, repeat=ksize):
         permutations.add(''.join(combo))
@@ -93,6 +119,20 @@ class BioVocab(Vocab):
         Create a vocabulary from a set of `tokens` based on a maximum vocabulary size and minimum frequency of the occurrence of the token.
         Defaults will fit 4**8 tokens (so e.g. all permutations of ksize=8), with a minimum frequency of 100.
         see e.g. Chor et al. 2009 (doi: 10.1186/gb-2009-10-10-r108) for kmer frequency distribs for diff k sizes that make sense
+
+        Parameters
+        ---------
+        tokens
+            A collection of tokens from which to create a vocabulary. Default None.
+
+        special_tokens
+            A collection of special tokens to use. Default includes tokens for 'unknown', 'pad', 'beginning of sequence', and 'end of sequence'. 
+
+        max_vocab
+            An int indicating maximum number of vocabulary items to include (most frequent tokens up to this number will be included). Default 4**8.
+
+        min_freq
+            An int indicating the minimum frequency of a token in order to be included in the vocabulary. Default 100.
         '''
         freq = Counter(p for o in tokens for p in o)
         itos = [o for o,c in freq.most_common(max_vocab) if c >= min_freq]
@@ -105,8 +145,18 @@ class BioVocab(Vocab):
     @classmethod
     def create_from_ksize(cls, ksize:int=1, alphabet:Collection[str]=supported_languages['dna'], special_tokens=defaults.special_tokens):
         '''
-        Create a vocabulary of all possible permutations of kmers of a given kmer size. 
-        In DNA, this remains practical up until a ksize of about 8 (4**8=65536).
+        Create a vocabulary of all possible permutations of kmers of a given kmer size. In DNA, this remains practical up until a ksize of about 8 (4**8=65536).
+
+        Parameters
+        ---------
+        ksize
+            An int indicating the kmer size from which to generate vocabulary items. Default 1. 
+
+        alphabet
+            A collection of the possible letters in your alphabet. Default is ['A','C','G','T'] (e.g. for DNA).
+
+        special_tokens
+            A collection of special tokens to use. Default includes tokens for 'unknown', 'pad', 'beginning of sequence', and 'end of sequence'. 
         '''
         itos = kmer_permutations(ksize=ksize, alphabet=alphabet)
         for o in reversed(special_tokens):
@@ -118,11 +168,9 @@ class BioVocab(Vocab):
 # These preprocessors will convert each sequence (in Text form) in the itemlist to a tokenized & numericalized text. Note this will mean all your items need to fit in memory
 
 def _join_seqs(seqs:Collection[str]):
-    '''
-    if your sequence is an array of multiple sequences, this will join them together separated by spaces to be tokenized as one
-    (this may be useful if for example you want to represent a genome from its genes in syntenic order perhaps with a special token to mark where genes begin and end)
-    It also adds BOS and/or EOS tokens.
-    '''
+    #if your sequence is an array of multiple sequences, this will join them together separated by spaces to be tokenized as one
+    #(this may be useful if for example you want to represent a genome from its genes in syntenic order perhaps with a special token to mark where genes begin and end)
+    #It also adds BOS and/or EOS tokens.
     
     if not isinstance(seqs, np.ndarray): seqs = np.array(seqs)
     if is1d(seqs): seqs = seqs[:,None]
@@ -135,7 +183,7 @@ def _join_seqs(seqs:Collection[str]):
     return col.values
 
 class BioTokenizeProcessor(PreProcessor):
-    "`PreProcessor` that tokenizes the seqs in `ds`. If no tokenizer given, defaults to character LM."
+    #"`PreProcessor` that tokenizes the seqs in `ds`. If no tokenizer given, defaults to character LM."
     def __init__(self, ds:ItemList=None, tokenizer:BioTokenizer=BioTokenizer(), 
                  chunksize:int=10000, include_bos:bool=None, include_eos:bool=None):
         self.tokenizer = tokenizer
@@ -159,7 +207,7 @@ class BioTokenizeProcessor(PreProcessor):
         ds.items = tokens
 
 class BioNumericalizeProcessor(PreProcessor):
-    "`PreProcessor` that numericalizes the tokens in `ds`. If no vocab given, defaults to creating one from existing tokens."
+    #"`PreProcessor` that numericalizes the tokens in `ds`. If no vocab given, defaults to creating one from existing tokens."
     def __init__(self, ds:ItemList=None, vocab:Vocab=None, max_vocab:int=4**8, min_freq:int=2):
         vocab = ifnone(vocab, ds.vocab if ds is not None else None)
         self.vocab,self.max_vocab,self.min_freq = vocab,max_vocab,min_freq
