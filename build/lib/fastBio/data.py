@@ -3,8 +3,8 @@
 
 from fastai import *
 from fastai.text import *
-from iterators import *
-from transform import *
+from .iterators import *
+from .transform import *
 
 supported_seqfiletypes = ['.fastq', '.fna', '.fasta', '.ffn', '.faa']
 
