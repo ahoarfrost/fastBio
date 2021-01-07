@@ -1,6 +1,6 @@
 from fastai import *
 from fastai.text import *
-from data import *
+from .data import *
 import urllib.request
 
 pretrained_urls = {
