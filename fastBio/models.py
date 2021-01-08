@@ -53,16 +53,18 @@ class LookingGlass():
         if pretrained:
             if pretrained_dir:
                 model_path = Path(pretrained_dir)
+                if not model_path.exists(): #create path if doesn't exist
+                    model_path.mkdir(parents=True, exist_ok=True)
             else:
                 model_path = Path('./').resolve()
 
             if not Path(model_path/'LookingGlass.pth').exists():
                 print('downloading pretrained model to',str(Path(model_path/'LookingGlass.pth')))
                 model_url = pretrained_urls['LookingGlass']
-                urllib.request.urlretrieve(model_url, "LookingGlass.pth")
+                urllib.request.urlretrieve(model_url, str(Path(model_path/'LookingGlass.pth')))
             
             print('loading pretrained LookingGlass language model')
-            learn.load(str(Path(model_path/'LookingGlass')))
+            learn.load(Path(model_path/'LookingGlass').resolve())
             learn.freeze()
 
         return learn
@@ -115,16 +117,18 @@ class LookingGlassClassifier():
         if pretrained:
             if pretrained_dir:
                 model_path = Path(pretrained_dir)
+                if not model_path.exists(): #create path if doesn't exist
+                    model_path.mkdir(parents=True, exist_ok=True)
             else:
                 model_path = Path('./').resolve()
 
             if not Path(model_path/Path(pretrained_name+'.pth')).exists():
                 print('downloading pretrained model to',str(Path(model_path/Path(pretrained_name+'.pth'))))
                 model_url = pretrained_urls[pretrained_name]
-                urllib.request.urlretrieve(model_url, pretrained_name+".pth")
+                urllib.request.urlretrieve(model_url, str(Path(model_path/pretrained_name))+'.pth')
             
             print('loading classifier with pretrained encoder from',str(Path(model_path/Path(pretrained_name+'.pth'))))
-            learn.load_encoder(str(Path(model_path/Path(pretrained_name))))
+            learn.load_encoder(Path(model_path/Path(pretrained_name)).resolve())
             learn.freeze()
 
         return learn
@@ -156,6 +160,8 @@ class LookingGlassClassifier():
         if pretrained:
             if pretrained_dir:
                 model_path = Path(pretrained_dir)
+                if not model_path.exists(): #create path if doesn't exist
+                    model_path.mkdir(parents=True, exist_ok=True)
             else:
                 #save to working directory if no directory provided
                 model_path = Path('./').resolve()
@@ -163,10 +169,10 @@ class LookingGlassClassifier():
             if not Path(model_path/Path(pretrained_name+'.pth')).exists():
                 print('downloading pretrained model to',str(Path(model_path/Path(pretrained_name+'.pth'))))
                 model_url = pretrained_urls[pretrained_name]
-                urllib.request.urlretrieve(model_url, pretrained_name+".pth")
+                urllib.request.urlretrieve(model_url, str(Path(model_path/pretrained_name))+'.pth')
             
-            print('loading pretrained classifier',pretrained_name)
-            learn.load(str(Path(model_path/Path(pretrained_name))))
+            print('loading pretrained classifier from',str(Path(model_path/Path(pretrained_name+'.pth'))))
+            learn.load(Path(model_path/Path(pretrained_name)).resolve())
             learn.freeze()
 
         return learn
