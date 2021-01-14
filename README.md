@@ -23,7 +23,7 @@ The docs for the fastBio package are [here](https://fastbio.readthedocs.io/).
 # Tutorial
 
 
-You can run the following tutorial in a jupyter notebook by downloading the notebook in [this repository](https://github.com/ahoarfrost/fastBio/blob/master/Tutorial.ipynb).
+You can also run the following tutorial in a [jupyter notebook](https://github.com/ahoarfrost/fastBio/blob/master/Tutorial.ipynb).
 __________________________
 
 
