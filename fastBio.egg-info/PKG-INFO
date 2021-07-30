@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: fastBio
-Version: 0.1.5
+Version: 0.1.7
 Summary: Deep learning for biological sequences with fastai
 Home-page: https://github.com/ahoarfrost/fastBio
 Author: Adrienne Hoarfrost
@@ -8,7 +8,7 @@ Author-email: adrienne.l.hoarfrost@gmail.com
 License: UNKNOWN
 Description: # Welcome to fastBio
         
-        fastBio is a library for manipulating data and creating and training deep learning models for biological sequencing data. It is an extension of the fastai v1 library.
+        fastBio is a package for manipulating data and creating and training deep learning models for biological sequencing data. It is an extension of the fastai v1 library.
         
         A number of pretrained models for biological sequencing data can be loaded directly through fastBio with the **LookingGlass** and **LookingGlassClassifier** classes. 
         These models are available for download at the sister repository [LookingGlass](https://github.com/ahoarfrost/LookingGlass).
@@ -24,9 +24,788 @@ Description: # Welcome to fastBio
         
         `pip3 install fastBio`
         
+        # Docs
+        
+        The docs for the fastBio package are [here](https://fastbio.readthedocs.io/).
+        
+        # Tutorial
+        
+        
+        You can run the following tutorial in a jupyter notebook by downloading the notebook in [this repository](https://github.com/ahoarfrost/fastBio/blob/master/Tutorial.ipynb).
+        __________________________
+        
+        
+        ```python
+        import fastBio
+        ```
+        
+        # Steps to training a model
+        
+        In fast.ai, there are three basic steps to training a deep learning model: 
+        
+        1) Define your **transforms** (for sequences/text, this means defining the **tokenizer** and **vocabulary** you will use for tokenization and numericalization)
+        
+        2) Create a **Databunch** (which wraps up a Pytorch Dataset and Dataloader into one)
+        
+        3) Create a **Learner** with your specified **model config**
+        
+        and train!
+        
+        If fastai v1 is new to you, I recommend taking a look at their very extensive [documentation](https://fastai1.fast.ai/), [forum](https://forums.fast.ai/), and [online course](https://course19.fast.ai/). Note fastBio uses fastai v1, which isn't compatible with the new fastai v2.
+        
+        Biological sequence data asks for some special treatment as compared to text (kmer-based tokenization; handling sequence file types like fasta/fastq), so while we can use much of the built-in fast.ai *text* functionality, fastBio provides some helper functions and classes to deal with some of the quirks of biological data.
+        
+        # create tokenizer and vocabulary for transforming seq data
+        
+        
+        ```python
+        from fastBio import BioTokenizer, BioVocab
+        ```
+        
+        
+        ```python
+        #define a tokenizer with the correct kmer size and stride for your data
+        
+        tok = BioTokenizer(ksize=1, stride=1)
+        tok
+        ```
+        
+        
+        
+        
+            BioTokenizer with the following special tokens:
+             - xxunk
+             - xxpad
+             - xxbos
+             - xxeos
+        
+        
+        
+        The kmer size is how many nucleotides constitute a 'word' in the sequence, and the stride is the number of nucleotides to skip between tokens. 
+        
+        So for a sequence: `ACGGCGCTC`
+        
+        a kmer size of 3 and stride of 1 would result in the tokenized sequence: `['ACG','CGG','GGC','GCG','CGC','GCT','CTC']`
+        
+        whereas a kmer size of 3 and stride of 3 would result in: `['ACG','GCG','CTC']`
+        
+        ## create vocab from scratch
+        
+        
+        ```python
+        model_voc = BioVocab.create_from_ksize(ksize=1)
+        print(model_voc.itos)
+        model_voc.stoi
+        ```
+        
+            ['xxunk', 'xxpad', 'xxbos', 'xxeos', 'T', 'G', 'C', 'A']
+        
+        
+        
+        
+        
+            defaultdict(int,
+                        {'xxunk': 0,
+                         'xxpad': 1,
+                         'xxbos': 2,
+                         'xxeos': 3,
+                         'T': 4,
+                         'G': 5,
+                         'C': 6,
+                         'A': 7})
+        
+        
+        
+        Above I created a vocabulary using a kmer size of 1 (so just the nucleotides A, C, T, G), but you can use larger kmer sizes as well:
+        
+        
+        ```python
+        model_voc = BioVocab.create_from_ksize(ksize=2)
+        print(model_voc.itos)
+        model_voc.stoi
+        ```
+        
+            ['xxunk', 'xxpad', 'xxbos', 'xxeos', 'CC', 'GA', 'AG', 'CG', 'CT', 'TC', 'TT', 'TG', 'GG', 'GT', 'CA', 'GC', 'AC', 'AT', 'TA', 'AA']
+        
+        
+        
+        
+        
+            defaultdict(int,
+                        {'xxunk': 0,
+                         'xxpad': 1,
+                         'xxbos': 2,
+                         'xxeos': 3,
+                         'CC': 4,
+                         'GA': 5,
+                         'AG': 6,
+                         'CG': 7,
+                         'CT': 8,
+                         'TC': 9,
+                         'TT': 10,
+                         'TG': 11,
+                         'GG': 12,
+                         'GT': 13,
+                         'CA': 14,
+                         'GC': 15,
+                         'AC': 16,
+                         'AT': 17,
+                         'TA': 18,
+                         'AA': 19})
+        
+        
+        
+        ## Or download the predefined LookingGlass vocabulary
+        
+        For training the LookingGlass model, I used a ksize=1, stride=1. If you're using a pretrained LookingGlass-based model, you want to make sure that your vocabulary is in the same order so that numericalization is the same for your data as for the LookingGlass weights. 
+        
+        Or, it's easy to simply download the LookingGlass vocabulary for this purpose:
+        
+        
+        ```python
+        #or download from pretrained vocab used in LookingGlass
+        
+        #you might need this if you are me...
+        import ssl
+        ssl._create_default_https_context = ssl._create_unverified_context
+        
+        import urllib.request
+        urllib.request.urlretrieve ("https://github.com/ahoarfrost/LookingGlass/releases/download/v1.0/ngs_vocab_k1_withspecial.npy", "ngs_vocab_k1_withspecial.npy")
+        
+        import numpy as np
+        voc = np.load('ngs_vocab_k1_withspecial.npy')
+        model_voc = BioVocab(voc)
+        print(model_voc.itos)
+        model_voc.stoi
+        ```
+        
+            ['xxunk' 'xxpad' 'xxbos' 'xxeos' 'G' 'A' 'C' 'T']
+        
+        
+        
+        
+        
+            defaultdict(int,
+                        {'xxunk': 0,
+                         'xxpad': 1,
+                         'xxbos': 2,
+                         'xxeos': 3,
+                         'G': 4,
+                         'A': 5,
+                         'C': 6,
+                         'T': 7})
+        
+        
+        
+        Notice that the order of the nucleotides in the vocabulary is different than the one that we generated from scratch; if you're using the pretrained LookingGlass-based models, make sure you're using the LookingGlass vocab described here as well.
+        
+        # create a databunch 
+        
+        You can create a databunch using the **BioLMDataBunch** (for language modeling) or **BioClasDataBunch** (for classification). You can do this from raw sequence data fasta/fastq files or csv files:
+        
+        * from_folder
+        * from_seqfile
+        * from_df
+        * from_multiple_csv
+        
+        You will probably want to create a **BioLMDataBunch** from_folder (which will include all sequences from a folder containing multiple fasta/fastq files), or from_seqfile (all sequences from a single fasta or fastq file). 
+        
+        For a **BioClasDataBunch**, I find it easiest in practice to convert sequence files like fasta/fastq to csv files with the label in a column and the sequence in another column, and use from_df or from_multiple_csv, rather than use from_seqfile or from_folder. Alternatively, you *can* use the **BioTextList** class to go straight from sequence files. 
+        
+        You can create a custom databunch, a la the fast.ai data block API, using the **BioTextList** class, which provides a few extra specialized labeling functions etc. If you *must* use sequence files for classification, for example, you can provide a fairly complicated regex-based function to use fastai's label_from_func, or create a BioTextList.from_folder and use label_from_fname or label_from_header in the BioTextList class to extract labels from a filename or fasta header, for instance.
+        
+        ## BioLMDataBunch example
+        
+        Here we'll download some toy metagenomes (a small subset of sequences from 6 marine metagenomes from the [TARA project](https://www.ebi.ac.uk/ena/browser/view/PRJEB402)), split them into 'train' and 'valid' folders, and create a BioLMDataBunch:
+        
+        
+        ```python
+        from fastBio import BioLMDataBunch
+        ```
+        
+        
+        ```python
+        #these are 1000 random sequences from 6 marine metagenomes from the TARA project:
+        from pathlib import Path
+        Path('./lmdata/train').mkdir(parents=True, exist_ok=True)
+        Path('./lmdata/valid').mkdir(parents=True, exist_ok=True)
+        
+        for srr in ['ERR598981','ERR599020','ERR599039','ERR599052']:
+            print('downloading',srr,'...')
+            'https://raw.githubusercontent.com/ahoarfrost/fastBio/master/example_data/TARA_cut1000/'+srr+'_cut1000.fastq'
+            url = 'https://raw.githubusercontent.com/ahoarfrost/fastBio/master/example_data/TARA_cut1000/'+srr+'_cut1000.fastq'
+            urllib.request.urlretrieve (url, Path('./lmdata/train/'+srr+'_cut1000.fastq'))
+        for srr in ['ERR599063','ERR599115']:
+            print('downloading',srr,'...')
+            url = 'https://raw.githubusercontent.com/ahoarfrost/fastBio/master/example_data/TARA_cut1000/'+srr+'_cut1000.fastq'
+            urllib.request.urlretrieve (url, Path('./lmdata/valid/'+srr+'_cut1000.fastq'))
+        
+        data_path = Path('./lmdata/')
+        train_path = Path('./train/') #relative to data_path
+        valid_path = Path('./valid/')
+        data_outfile = Path('metagenome_LMbunch.pkl')
+        
+        #define your batch size, ksize, and bptt
+        bs=512 
+        bptt=100
+        ksize=1
+        
+        max_seqs=None #None or int to optionally limit the number of sequences read from each file in training
+        val_max_seqs=None #same for valid set
+        skiprows = 0 #0 or int to optionally skip X sequences in the beginning of the file before reading into the databunch
+        val_skiprows = 0 #same for valid set
+        #these will default to the parameters chosen here, we don't technically need to pass them
+        
+        #using tok and model_voc defined above
+        
+        #create new training chunk 
+        print('creating databunch')
+        lmdata = BioLMDataBunch.from_folder(path=data_path, 
+                                                train=train_path, valid=valid_path, ksize=ksize,
+                                                tokenizer=tok, vocab=model_voc,
+                                                max_seqs_per_file=max_seqs, val_maxseqs=val_max_seqs,
+                                                skiprows=skiprows, val_skiprows=val_skiprows,
+                                                bs=bs, bptt=bptt
+                                                    )
+        print('there are',len(lmdata.items),'items in itemlist, and',len(lmdata.valid_ds.items),'items in lmdata.valid_ds')
+        print('databunch preview:')
+        print(lmdata)
+        #you can save your databunch to file like so:
+        lmdata.save(data_outfile)
+        ```
+        
+            there are 4000 items in itemlist, and 2000 items in lmdata.valid_ds
+            databunch preview:
+            BioLMDataBunch;
+            
+            Train: LabelList (4000 items)
+            x: BioLMTextList
+            xxbos A T T A A A G A T A T C A A T G C G T A A A T C T T T A T T C T T A A T A T T A A T A T C T T A T T C A T T A T C A A T A T T T A G T T T T G A A T T T A G T G T T A T G A C C C T A A A T G C T C A A A,xxbos T G C T T T A A T T C G A T G G G T A A A T A A G C C T xxunk A T C A T T C T T T T T T G G G T C A T C A A T C G T A T C A A,xxbos T G T T A A A G C A A T A G G C A G T G A A G C A G A A G G C A G T C T C A C T G G A G T G C A C A C A G G T T T A A T G G G T T T G G G T T T C A T T A T A G G C A C G A T A A G C A T T G G A T T T G,xxbos T T T A T G T C C C T G G C T G C C A T G A A A C G G T xxunk T A C A A C A A A A G G C T G T C C C G G A T A G C C A A A T C,xxbos C C A T T A G A G T T T G T T G T T G A G T A A G T A T A A G C T C C T G A A C T T G T A T A A G T T G T T C C A T T C C A A C T A T A A G A A T C A C A A G A A G T A T G T G T A G T T G C A G A T G T
+            y: LMLabelList
+            ,,,,
+            Path: /Users/adrienne/Projects/fastBio/lmdata/train;
+            
+            Valid: LabelList (2000 items)
+            x: BioLMTextList
+            xxbos A T T T T A A A G C A T A T G G T A G T A A A G G T A T T T C T T C C A A T A A A C T A C T T A G T C T G G G G A T T A A A G A T T T T C A C C G A A G T T T C C G A A T T G A A A A C A T T T C T C A A,xxbos T T T T C T T G A C T A T T T C C T T G G G C T C C A A C C A A A T A G G G G G C G A G C T T G G C G T A G G T G T T T T G A G A A A T G T T T T C A A T T C G G A A A C T T C G G T G A A A A T C T T T,xxbos T G C A A A A T C T T A T A C T A A A A T T G G T G A A A A T G T A A A A G A A G G C A T C T T T T T A C A T T A A A C T A A A A G A C G T G T T A A A C T A T T G A A A G A A G A A T T A A A A A A A,xxbos T A T T T T A T A T T C T A T A T C T T T T A C A T G T A T A G T T T C A T C T T T T C C T T T G T A A G T A A A C T T A A T A A T A C T A T G T T T T T T T A A T T C T T C T T T C A A T A G T T T A A,xxbos C T A G A C T T T T T T A T T C C T A A T T T C A A T T T T T C A T A T T T A T C T G A T G C T A G A T T T T T T A A A T C A T T A
+            y: LMLabelList
+            ,,,,
+            Path: /Users/adrienne/Projects/fastBio/lmdata/valid;
+            
+            Test: None
+        
+        
+        ## BioClasDataBunch example
+        
+        Here we'll download sequences that I've preprocessed: downloading the coding sequences of three genomes, splitting them into read-length chunks, and recording that sequence, along with the label of the known reading frame from the coding sequence, in a csv file for each sequence. The sequence is in a column named 'seq' and the label is in a column named 'frame'.
+        
+        We'll split these csv files into train and valid folders and create a BioClasDataBunch from_multiple_csv
+        
+        
+        ```python
+        from fastBio import BioClasDataBunch
+        ```
+        
+        
+        ```python
+        from pathlib import Path
+        Path('./clasdata/train').mkdir(parents=True, exist_ok=True)
+        Path('./clasdata/valid').mkdir(parents=True, exist_ok=True)
+        
+        for genome in ['GCA_000007025.1_ASM702v1','GCA_000008685.2_ASM868v2']:
+            print('downloading',genome,'...')
+            url = 'https://github.com/ahoarfrost/fastBio/raw/master/example_data/FrameClas_sample/'+genome+'.csv'
+            urllib.request.urlretrieve (url, Path('./clasdata/train/'+genome+'.csv'))
+        
+        url = 'https://github.com/ahoarfrost/fastBio/raw/master/example_data/FrameClas_sample/GCA_000011445.1_ASM1144v1.csv'
+        print('downloading GCA_000011445.1_ASM1144v1...')    
+        urllib.request.urlretrieve (url, Path('./clasdata/valid/GCA_000011445.1_ASM1144v1.csv'))
+        
+        data_path = Path('./clasdata/')
+        train_path = Path('./clasdata/train/')
+        valid_path = Path('./clasdata/valid/')
+        data_outfile = Path('frameclas_bunch.pkl')
+        
+        #use tok and model_voc defined above again
+        #you can optionally limit the number of sequences you read (and how many rows to skip in the csv)
+        
+        framedata = BioClasDataBunch.from_multiple_csv(path=data_path, train=train_path, valid=valid_path,
+                                            text_cols='seq', label_cols='frame',
+                                            tokenizer=tok, vocab=model_voc,
+                                            #let's limit the number of sequences for this toy example
+                                            max_seqs_per_file=1000, valid_max_seqs=500, skiprows=0, bs=512
+                                                )
+        print('there are',len(framedata.items),'items in itemlist, and',len(framedata.valid_ds.items),'items in data.valid_ds')
+        print('there are',framedata.c,'classes')
+        
+        print('databunch preview:')
+        print(framedata)
+        #you can save your databunch to file like so:
+        framedata.save(data_outfile)
+        ```
+        
+            there are 2000 items in itemlist, and 500 items in data.valid_ds
+            there are 6 classes
+            databunch preview:
+            TextClasDataBunch;
+            
+            Train: LabelList (2000 items)
+            x: BioTextList
+            xxbos A G T T A A A T C G A T T T G G G T T C C A A T A A A A A A T T T T A T A G C A A G T G T A T C A G T T A A A A T T G A A T A C T T G G T A A T G T A A A T A G T G A A A G C T A A A T T G A A A T A,xxbos A A A G A A G T C G A T A A T T T A T A G T A A A T A C T A T A G T T A T T A G G T A T G A A A T C A A T T T C A A A T T T G A A G G T A A T T A T G G G A A G A A T T G G A T A G A G A A A T G C A T G A G T T G T T T T T C C T G T A A A T A T A G T A G T T C T C A G,xxbos A A T G A A G T A T A G T G C T A T T T T A T T A A T A T G T A G C G T T A A T T T A T T T T G T T T T C A A A A T A A A T T A A C T A C T T C T C G A T G G G A A T T C C C T A A A G A A G A T T T A A T T A A A A A A A A A A T A A A A A T A G G C A T A A T T T A C C A T A A T T A C A T A A A T T C T A T C T T T T A C A A T G A A A A T T A T A A A T A C A T T G C C T T T A T C G G A A T A T T G A C A T C T T A T A A T G A A T G G A T T G A A A T A C A A T T T A G C C C C A T A A A T T T T T T T A C T A T C C C A A C A A A T A A A G A T T T T A T T T C A A A T A C T,xxbos C T A A T A T T G A A A A T G C T A T T A A A A A G T C T T T G A G T T C G G G T G T C A A T A T A G T A C T C A T T C C T T A G,xxbos T T G C A T C T T A T T T A T A A A A T T G G T G A A G T T C T T G C T A A A C A A T T G C G T A G A T T G G G T A T T A A T T T A A A T A T G G C T C C A G T T G C C G A T A T A A A A T T T G C A C C A C A T A C T C C T T T A T T A A A T A G G A C A T T T G G A G G A T A T T C C G C T T A T A A T
+            y: CategoryList
+            -1,-1,2,3,1
+            Path: /Users/adrienne/Projects/fastBio/clasdata;
+            
+            Valid: LabelList (500 items)
+            x: BioTextList
+            xxbos A T C T C T A C C A C C A A A T T C T T C T C C A A T T T G A G C T A A A G T G T G A T T T A A G A T C T C T T T T G T T A A A A A C A T T G C T A T A T G T C T T G C T G T T A C A A T T G A C T T A,xxbos A A G C T T T T A T A G C A G T T C A A A C C G T A A G T A A A A A T C C T G G A A T T T C T T A T A A T C C A T T G T T T A T T T A T G G T G A A T C T G G A A T G G G A A A A A C T C A T T T A T T A A A A G C T G C A A A A A A C T A T A T T G A A T C T A A T T T T T C T G A T C T A A A A G T T A,xxbos G T T C A T T A C T T G C A C C G A T T A C A A A A T T T T C A A A T G T G T T T T C A T T A A T T T T T T T A A C T T T T T T A G T G A T G A T A T C A G A A T G A T C T T T T T T G A T T A A T T C A T C T T T T T C T A G T T G T T T T T T A T A T T C T T G T T C G T A T G T A A A A C T A A T A T T,xxbos T T T A A A A T A C C T A A T T T T G A A G T A G G T A T A T C T C T A A A C A G A T C A G A A A C T A T T T C T A T A G T A A T A A T T T T T T C T T C T G G A T T T T G T T G A G A T C A A A A G T T T A A T C T T G A A A C A C T T C C T T T A A T T T T T C T A A C A T C A T C T G A A T A A T A A,xxbos T G T T A A A A A A A T T A A A G A A G T T G T T A G T G A A A A A T A T G G T A T T T C A G T T A A T G C A A T T G A T G G A A A A G C T A G A A G
+            y: CategoryList
+            -2,3,-1,-2,2
+            Path: /Users/adrienne/Projects/fastBio/clasdata;
+            
+            Test: None
+        
+        
+        # create a learner and train
+        
+        You can now create a fastai 'learner' with your databunch and train! 
+        
+        There's nothing special in fastBio you *need* to create a learner - you can use get_language_model or get_text_classifier and any model config you want (see the fastai and pytorch docs for this). 
+        
+        To use LookingGlass architecture (with or without pretrained weights), use the **LookingGlass** or **LookingGlassClassifier** classes which maintain the architecture used for the LookingGlass models and associated transfer learning tasks.
+        
+        There are several pretrained models available through the [LookingGlass](https://github.com/ahoarfrost/LookingGlass/releases/download/v1.0/LookingGlass.pth) release, which can be loaded by name in the LookingGlass and LookingGlassClassifier classes.
+        
+        Make sure to use pretrained=False if you're not using a pretrained model (pretrained=True by default). 
+        
+        ## Language model
+        
+        Let's use our BioLMDataBunch to train a language model with the same architecture as LookingGlass:
+        
+        
+        ```python
+        from fastBio import LookingGlass
+        ```
+        
+        ### from scratch (no pretrained weights)
+        
+        
+        ```python
+        lmlearn = LookingGlass(data=lmdata).load(pretrained=False)
+        ```
+        
+        
+        ```python
+        #adjusting batch size down for my laptop
+        lmlearn.data.batch_size = 64
+        ```
+        
+        
+        ```python
+        lmlearn.fit_one_cycle(5)
+        ```
+        
+        
+        <table border="1" class="dataframe">
+          <thead>
+            <tr style="text-align: left;">
+              <th>epoch</th>
+              <th>train_loss</th>
+              <th>valid_loss</th>
+              <th>accuracy</th>
+              <th>time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>1.592360</td>
+              <td>1.451439</td>
+              <td>0.302540</td>
+              <td>06:35</td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>1.460893</td>
+              <td>1.411753</td>
+              <td>0.310217</td>
+              <td>06:58</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>1.421647</td>
+              <td>1.402959</td>
+              <td>0.316920</td>
+              <td>07:04</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>1.407578</td>
+              <td>1.399795</td>
+              <td>0.329194</td>
+              <td>06:53</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>1.403432</td>
+              <td>1.399376</td>
+              <td>0.330121</td>
+              <td>06:51</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        
+        ### using a pretrained model 
+        
+        Using pretrained=True with LookingGlass.load() will load the 'LookingGlass' language model pretrained weights.
+        
+        
+        ```python
+        #create LookingGlass() model from databunch defined above
+        lmlearn2 = LookingGlass(data=lmdata).load(pretrained=True, pretrained_dir='models')
+        ```
+        
+            downloading pretrained model to models/LookingGlass.pth
+            loading pretrained LookingGlass language model
+        
+        
+        ## Classifier
+        
+        Let's use our BioClasDataBunch to create and train a classifier with the same encoder architecture as LookingGlass to predict the reading frame of a DNA sequence.
+        
+        LookingGlassClassifier has two ways to load a model:
+        
+        * **load()** 
+        
+        * **load_encoder()**
+        
+        If using pretrained=False, load() and load_encoder() both create the same classifier with a LookingGlass-like encoder and classification decoder. 
+        
+        If using pretrained=True, **load** and **load_encoder** differ in the pretrained models that can be loaded:
+        
+        * load_encoder - 'LookingGlass_enc' (default), or 'FunctionalClassifier_enc'
+        
+        * load - 'FunctionalClassifier', 'OxidoreductaseClassifier', 'OptimalTempClassifier', or 'ReadingFrameClassifier'
+        
+        These models are described in the [preprint](https://www.biorxiv.org/content/10.1101/2020.12.23.424215v2).
+        
+        
+        ```python
+        from fastBio import LookingGlassClassifier
+        ```
+        
+        ### from scratch (no pretrained weights)
+        
+        
+        ```python
+        framelearn = LookingGlassClassifier(data=framedata).load(pretrained=False)
+        ```
+        
+        
+        ```python
+        #decrease batch size for my laptop
+        framelearn.data.batch_size = 128
+        ```
+        
+        
+        ```python
+        framelearn.fit_one_cycle(5)
+        ```
+        
+        
+        <table border="1" class="dataframe">
+          <thead>
+            <tr style="text-align: left;">
+              <th>epoch</th>
+              <th>train_loss</th>
+              <th>valid_loss</th>
+              <th>accuracy</th>
+              <th>time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>1.837610</td>
+              <td>1.793275</td>
+              <td>0.162000</td>
+              <td>03:52</td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>1.769472</td>
+              <td>1.782107</td>
+              <td>0.184000</td>
+              <td>03:39</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>1.688373</td>
+              <td>1.776759</td>
+              <td>0.172000</td>
+              <td>03:24</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>1.631552</td>
+              <td>1.620592</td>
+              <td>0.270000</td>
+              <td>03:24</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>1.600325</td>
+              <td>1.555967</td>
+              <td>0.294000</td>
+              <td>03:22</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        
+        We have pretty limited data here, so we don't get great performance. Let's try loading the pretrained LookingGlass encoder and see if we can fine tune it to do any better:
+        
+        ### with the pretrained 'LookingGlass' encoder
+        
+        
+        ```python
+        framelearn2 = LookingGlassClassifier(data=framedata).load_encoder(pretrained_name='LookingGlass_enc', 
+                                                                          pretrained=True, 
+                                                                          pretrained_dir='models')
+        ```
+        
+            downloading pretrained model to models/LookingGlass_enc.pth
+            loading classifier with pretrained encoder from models/LookingGlass_enc.pth
+        
+        
+        
+        ```python
+        #decrease batch size for my laptop
+        framelearn2.data.batch_size = 128
+        ```
+        
+        
+        ```python
+        framelearn2.fit_one_cycle(5)
+        ```
+        
+        
+        <table border="1" class="dataframe">
+          <thead>
+            <tr style="text-align: left;">
+              <th>epoch</th>
+              <th>train_loss</th>
+              <th>valid_loss</th>
+              <th>accuracy</th>
+              <th>time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>1.821647</td>
+              <td>1.794491</td>
+              <td>0.238000</td>
+              <td>01:11</td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>1.655392</td>
+              <td>1.745429</td>
+              <td>0.280000</td>
+              <td>01:13</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>1.470321</td>
+              <td>1.612899</td>
+              <td>0.376000</td>
+              <td>01:13</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>1.328448</td>
+              <td>1.432560</td>
+              <td>0.528000</td>
+              <td>01:11</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>1.241135</td>
+              <td>1.250988</td>
+              <td>0.548000</td>
+              <td>01:11</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        
+        We do much better, but of course we still don't have much data (and we're not using our tricks like gradual training of layers) so our performance isn't yet amazing, and we're starting to overfit. 
+        
+        Luckily, there's an existing pretrained model for exactly this classification task, the 'ReadingFrameClassifier', that we can use:
+        
+        ### using the pretrained ReadingFrameClassifier model
+        
+        
+        ```python
+        framelearn3 = LookingGlassClassifier(data=framedata).load(pretrained_name='ReadingFrameClassifier', 
+                                                                          pretrained=True, 
+                                                                          pretrained_dir='models')
+        ```
+        
+            downloading pretrained model to models/ReadingFrameClassifier.pth
+            loading pretrained classifier from models/ReadingFrameClassifier.pth
+        
+        
+        
+        ```python
+        #decrease batch size for my laptop
+        framelearn3.data.batch_size = 128
+        ```
+        
+        
+        ```python
+        framelearn3.fit_one_cycle(1)
+        ```
+        
+        
+        <table border="1" class="dataframe">
+          <thead>
+            <tr style="text-align: left;">
+              <th>epoch</th>
+              <th>train_loss</th>
+              <th>valid_loss</th>
+              <th>accuracy</th>
+              <th>time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>0.060926</td>
+              <td>0.189241</td>
+              <td>0.944000</td>
+              <td>01:19</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        
+        much better! Although we're already pretty overfit, so we probably should have just gone straight into using the pretrained model for inference rather than further training. 
+        
+        We can do that with framelearn3.predict() or .pred_batch(), or we can load an exported model for inference like so:
+        
+        ## I don't want to deal with all the databunch/training stuff. What if I really just want to make  a handful of predictions on some data with a pretrained model? 
+        
+        You can do that! Pretrained models for LookingGlass and associated transfer learning tasks can be downloaded in [release v1 of LookingGlass](https://github.com/ahoarfrost/LookingGlass/releases/tag/v1.0). The ones that end in 'export.pkl' were saved using the fastai 'export' function and can be loaded (with empty databunches) with the fastai load_learner function and used for inference directly:
+        
+        
+        ```python
+        #download the pretrained oxidoreductase classifier to 'models' folder
+        import urllib.request
+        urllib.request.urlretrieve ('https://github.com/ahoarfrost/LookingGlass/releases/download/v1.0/OxidoreductaseClassifier_export.pkl', 
+                                    'models/OxidoreductaseClassifier_export.pkl')
+        ```
+        
+        
+        
+        
+            ('models/OxidoreductaseClassifier_export.pkl',
+             <http.client.HTTPMessage at 0x7ffd52420ef0>)
+        
+        
+        
+        
+        ```python
+        #load the model (with an empty databunch)
+        from fastai.text import load_learner
+        oxido = load_learner(Path('./models').resolve(), 'OxidoreductaseClassifier_export.pkl')
+        ```
+        
+        Now let's make some predictions for reads in one of our toy metagenomes we downloaded earlier:
+        
+        
+        ```python
+        from Bio import SeqIO
+        
+        for ix,record in enumerate(SeqIO.parse('lmdata/valid/ERR599115_cut1000.fastq','fastq')): 
+            seq = str(record.seq)
+            if ix < 20:
+                print('sequence:',seq)
+                print('prediction:',oxido.predict(seq))
+                print('---------')
+            else:
+                break
+        ```
+        
+            sequence: GGGTTGCCAGGTCGACGAGCACGACGACGGCTCGAAGAGCGGTTGGTGCGAGGACGGCACCGGTTGGTGG
+            prediction: (Category nonec1, tensor(1), tensor([0.0130, 0.9870]))
+            ---------
+            sequence: CTGGTTCCATCATCGTAGGAGTCGGTGGAACAGCCAGTCTCCTCGTCGTAGCTGTAGACGGGCGGAGCCCAGGACTCCTGCACACCCTCGGCGTCCTCC
+            prediction: (Category nonec1, tensor(1), tensor([0.0024, 0.9976]))
+            ---------
+            sequence: TTCAGAATAATCAACTCCATCAATATCCCAGCCACATCCTGATAAATATTGACATTGATCATCCGCATAACCCACGCCTAAATACATGTCACACCAGCC
+            prediction: (Category nonec1, tensor(1), tensor([0.4787, 0.5213]))
+            ---------
+            sequence: TGGANAGACGCCTATTTGGGTTGCAGAGTGTCCTGAAAATGGTGATTGCATGGATTTGACTGGATTATTTTTTGGCTGGTGTGACATGTATTTAGGCG
+            prediction: (Category nonec1, tensor(1), tensor([0.0030, 0.9970]))
+            ---------
+            sequence: ATGATTTAGCAACCATTTTAATCCCCCCTTCAAGTGGGGTTCAATCCGCTGAAGGAGCTCAGCTGGGAACAT
+            prediction: (Category nonec1, tensor(1), tensor([0.0132, 0.9868]))
+            ---------
+            sequence: TGTCACTGGCAGCTTATTTAGTGTTCTCTTGTGCAGGACAGAAAGTTCCTGATAATCCAAAACTGGTAGTGATGATAGCCGGCGATATGTTC
+            prediction: (Category nonec1, tensor(1), tensor([0.0019, 0.9981]))
+            ---------
+            sequence: TCTGCTGTGCCAGACCGATAAACGAATTCATGATACCAATGACGGTACCGAACAGACCGATATAGCGCGTTACTGAACCTACTGTGGCCAGAAAC
+            prediction: (Category nonec1, tensor(1), tensor([3.6912e-04, 9.9963e-01]))
+            ---------
+            sequence: CATCATGGCCGGTTCCCAGCGTGCCATGCGCGTAGCCTATTCGCGTGAAGAGGAAAAGCTGGAAAAACATCTGCCGTTTCTGGCCACAGTAGGTTCAGTA
+            prediction: (Category ec1, tensor(0), tensor([0.7161, 0.2839]))
+            ---------
+            sequence: TTATGGAGCATACCAAACATTACCAAATATACGAAAACAAAATTTTGCTATTTTGGTAGAAGGACAAACTGATTGTCTTCGTTTGGTAGAAAATGGTTT
+            prediction: (Category nonec1, tensor(1), tensor([0.0411, 0.9589]))
+            ---------
+            sequence: TTTTTAAGCACAGTAGCGTGTTTGCTCGAAAATGCGGTTCCTGAGGTAGCAATTACATTAGAAAAACCATTTTCTACCAAACGAAGACAATCAGTTTGTC
+            prediction: (Category nonec1, tensor(1), tensor([0.2211, 0.7789]))
+            ---------
+            sequence: CAGTGACAAGATAATTTTTTCATCGGTATGTTTTATTTATCACTATTTTTCTATCATAGTAATAGTTATCCACACCGCACTAGAACTGCTTTAAATGTT
+            prediction: (Category nonec1, tensor(1), tensor([0.0069, 0.9931]))
+            ---------
+            sequence: TAGGTTGTACTTTGAGTCTGTAAGTGAATCGAAAGTGAATCAAAACGTGAACATTTAAAGCAGTTCTAGTGCGGTGTGGATAACTATTACTATGATAGAAA
+            prediction: (Category nonec1, tensor(1), tensor([0.0203, 0.9797]))
+            ---------
+            sequence: GCCATGGGCGTTATTTGTCTAATTTGCCCTTTGATGCATCCACGAAGCGGGGTCATCCGTATCCCGGCATCGGTTCTTAACCAGCAAAGGAAGAACAAA
+            prediction: (Category ec1, tensor(0), tensor([0.6001, 0.3999]))
+            ---------
+            sequence: AGCCAGCGTGCACCATCAAGGCGCTTTGCTATCGTATTTTCCGGGGCACCATCATTAATATCTCTCGTCTCTTTGTACTTCCTTTGCTGGTTAAGAACCGA
+            prediction: (Category nonec1, tensor(1), tensor([0.0165, 0.9835]))
+            ---------
+            sequence: TCTTTTGCTTATTGTTGGTTCAACACAACGTGCACTTTCAGATGGTTCAAAAGTTAGAGGAGACATAAACGTTTTTCTTGTTGGAGATCCTGGTACGGC
+            prediction: (Category nonec1, tensor(1), tensor([0.2953, 0.7047]))
+            ---------
+            sequence: CCTGATGTGTATAATCCTCTAGGAGCAATTCTTGAACAGAACTTTAACATTTCACTTTTTGCCGTACCAGGATCTCCAACAAGAAAAACGTTTATGTCTCC
+            prediction: (Category nonec1, tensor(1), tensor([0.4585, 0.5415]))
+            ---------
+            sequence: TGCTTACATCAGTCATTTTTTTCACCAAATTCTTCGAGAATCTTAACTGGCCTTATCCGGTCTAAAGTCTT
+            prediction: (Category ec1, tensor(0), tensor([0.5849, 0.4151]))
+            ---------
+            sequence: TGATTTCGGTAGCGGATATCCATCTGATAAAAAAACAATTAATTTTTTGAAGAGGTTCTATGCTGATAATGGAAAGTGGCCTGAGGG
+            prediction: (Category nonec1, tensor(1), tensor([0.1965, 0.8035]))
+            ---------
+            sequence: AAAACTTTTCTAAAAAATCAATATCTACAATTAAAGAAGCAAGAATCCTAGATGGTGATTCCACATATTTTCTGAATTTTAATCATCAAGAAATTCAAA
+            prediction: (Category nonec1, tensor(1), tensor([0.1708, 0.8292]))
+            ---------
+            sequence: AAAGNTTTTTTTTGATTAAATGGTTTGGAATTAAATATCCTAAATTTTCTTTTTGAATTTCTTGATGATTAAAATTCAGAAAATATGTGGAATCACCATCT
+            prediction: (Category nonec1, tensor(1), tensor([0.0047, 0.9953]))
+            ---------
+        
+        
+        This model predicts whether a sequence comes from an oxidoreductase (EC 1.-.-.-) or not - 'ec1' or 'nonec1'. 3 out of 20 of the sequences are predicted as ec1, which is consistent with the results from [the paper](https://www.biorxiv.org/content/10.1101/2020.12.23.424215v2) which found around 20% of sequences to be oxidoreductases in marine metagenomes.
+        
 Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
-Requires-Python: >=3.6.9
+Requires-Python: >=3.6
 Description-Content-Type: text/markdown
